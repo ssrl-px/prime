@@ -242,6 +242,7 @@ class leastsqr_handler(object):
         iparams,
         pres_in,
         observations_non_polar,
+        detector_distance_mm,
     ):
 
         pr_d_min = iparams.postref.scale.d_min
@@ -308,7 +309,7 @@ class leastsqr_handler(object):
                 crystal_init_orientation,
                 spot_pred_x_mm_sel,
                 spot_pred_y_mm_sel,
-                iparams.detector_distance_mm,
+                detector_distance_mm,
                 refine_mode,
                 const_params,
             ),
@@ -385,6 +386,7 @@ class leastsqr_handler(object):
         iparams,
         pres_in,
         observations_non_polar,
+        detector_distance_mm,
     ):
 
         refine_steps = ["scale_factor"]
@@ -473,6 +475,7 @@ class leastsqr_handler(object):
                             iparams,
                             pres_in,
                             observations_non_polar,
+                            detector_distance_mm,
                         )
                         G, B = xopt_scalefactors
                         ry = spot_radius
@@ -513,7 +516,7 @@ class leastsqr_handler(object):
                     crystal_init_orientation,
                     spot_pred_x_mm_sel,
                     spot_pred_y_mm_sel,
-                    iparams.detector_distance_mm,
+                    detector_distance_mm,
                 )
                 i_sel_p = partiality_init > pr_partiality_min
                 observations_original_sel = observations_original_sel.customized_copy(
@@ -560,7 +563,7 @@ class leastsqr_handler(object):
                         crystal_init_orientation,
                         spot_pred_x_mm_sel,
                         spot_pred_y_mm_sel,
-                        iparams.detector_distance_mm,
+                        detector_distance_mm,
                         refine_mode,
                         const_params,
                     ),
@@ -628,7 +631,7 @@ class leastsqr_handler(object):
                 crystal_init_orientation,
                 spot_pred_x_mm_sel,
                 spot_pred_y_mm_sel,
-                iparams.detector_distance_mm,
+                detector_distance_mm,
                 refine_mode,
                 const_params,
             ),
@@ -659,7 +662,7 @@ class leastsqr_handler(object):
                 crystal_init_orientation,
                 spot_pred_x_mm,
                 spot_pred_y_mm,
-                iparams.detector_distance_mm,
+                detector_distance_mm,
             )
 
             I_o_init = (
@@ -682,7 +685,7 @@ class leastsqr_handler(object):
                 crystal_init_orientation,
                 spot_pred_x_mm,
                 spot_pred_y_mm,
-                iparams.detector_distance_mm,
+                detector_distance_mm,
             )
             I_o_init = (
                 pres_in.G
@@ -704,7 +707,7 @@ class leastsqr_handler(object):
             crystal_init_orientation,
             spot_pred_x_mm,
             spot_pred_y_mm,
-            iparams.detector_distance_mm,
+            detector_distance_mm,
         )
         I_o_fin = (
             G * np.exp(-2 * B * sin_theta_over_lambda_sq) * observations_original.data()

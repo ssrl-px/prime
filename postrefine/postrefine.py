@@ -29,6 +29,7 @@ class postref_handler(object):
         """Given the pickle file, extract and prepare observations object and
         the alpha angle (meridional to equatorial)."""
         observations = observations_pickle["observations"][0]
+        detector_distance_mm = observations_pickle["distance"]
         mm_predictions = iparams.pixel_size_mm * (
             observations_pickle["mapped_predictions"][0]
         )
@@ -128,11 +129,11 @@ class postref_handler(object):
         from cctbx import statistics
 
         pdb_asu_contents = {
-            "C": iparams.asu_contents.C,
-            "H": iparams.asu_contents.H,
-            "N": iparams.asu_contents.N,
-            "O": iparams.asu_contents.O,
-            "S": iparams.asu_contents.S,
+            "C": iparams.n_residues * 5,
+            "H": 0,
+            "N": iparams.n_residues * 2,
+            "O": int(round(iparams.n_residues * 1.5)),
+            "S": 0,
         }
         wilson_plot = statistics.wilson_plot(observations_as_f, pdb_asu_contents)
         wilson_k_b = (wilson_plot.wilson_intensity_scale_factor, wilson_plot.wilson_b)
@@ -181,7 +182,14 @@ class postref_handler(object):
             )
             observations = observations.customized_copy(data=I_b, sigmas=sigI_b)
 
-        return observations, alpha_angle_obs, spot_pred_x_mm, spot_pred_y_mm, wilson_b
+        return (
+            observations,
+            alpha_angle_obs,
+            spot_pred_x_mm,
+            spot_pred_y_mm,
+            wilson_b,
+            detector_distance_mm,
+        )
 
     def determine_polar(self, observations_original, iparams, pickle_filename):
 
@@ -253,7 +261,7 @@ class postref_handler(object):
         imgname = pickle_filename
 
         try:
-            observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm, wilson_b = self.organize_input(
+            observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm, wilson_b, detector_distance_mm = self.organize_input(
                 observations_pickle, iparams
             )
         except Exception:
@@ -333,13 +341,14 @@ class postref_handler(object):
             iparams,
             pres_in,
             observations_non_polar_sel,
+            detector_distance_mm,
         )
 
         # caculate partiality for output (with target_anomalous check)
         G_fin, B_fin, rotx_fin, roty_fin, ry_fin, rz_fin, re_fin, a_fin, b_fin, c_fin, alpha_fin, beta_fin, gamma_fin = (
             refined_params
         )
-        observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm, wilson_b = self.organize_input(
+        observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm, wilson_b, detector_distance_mm = self.organize_input(
             observations_pickle, iparams, mode="output"
         )
         observations_non_polar = self.get_observations_non_polar(
@@ -367,7 +376,7 @@ class postref_handler(object):
             crystal_init_orientation,
             spot_pred_x_mm,
             spot_pred_y_mm,
-            iparams.detector_distance_mm,
+            detector_distance_mm,
         )
 
         # calculate the new crystal orientation
@@ -413,7 +422,7 @@ class postref_handler(object):
         wavelength = observations_pickle["wavelength"]
 
         try:
-            observations_original, alpha_angle_obs, spot_pred_x_mm, spot_pred_y_mm, wilson_b = self.organize_input(
+            observations_original, alpha_angle_obs, spot_pred_x_mm, spot_pred_y_mm, wilson_b, detector_distance_mm = self.organize_input(
                 observations_pickle, iparams
             )
         except Exception:
@@ -442,7 +451,7 @@ class postref_handler(object):
         observations_pickle = pickle.load(open(pickle_filename, "rb"))
 
         try:
-            observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm, wilson_b = self.organize_input(
+            observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm, wilson_b, detector_distance_mm = self.organize_input(
                 observations_pickle, iparams, pickle_filename=pickle_filename
             )
         except Exception:
@@ -585,6 +594,7 @@ class postref_handler(object):
                     iparams,
                     None,
                     observations_non_polar_sel,
+                    detector_distance_mm,
                 )
                 G, B = refined_params
 
@@ -626,7 +636,7 @@ class postref_handler(object):
             crystal_init_orientation,
             spot_pred_x_mm,
             spot_pred_y_mm,
-            iparams.detector_distance_mm,
+            detector_distance_mm,
         )
 
         refined_params = np.array(
