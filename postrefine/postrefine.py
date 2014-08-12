@@ -52,10 +52,10 @@ class postref_handler(object):
         wavelength = observations_pickle["wavelength"]
 
         two_theta = observations.two_theta(wavelength=wavelength).data()
-        one_over_LP = (2 * flex.sin(two_theta)) / (1 + (flex.cos(two_theta) ** 2))
         one_over_P = 2 / (1 + (flex.cos(two_theta) ** 2))
+        one_over_LP = (8 * (flex.sin(two_theta / 2))) / (1 + (flex.cos(two_theta) ** 2))
         observations = observations.customized_copy(
-            data=observations.data() * one_over_P
+            data=observations.data() * one_over_LP
         )
 
         # set observations with target space group - !!! required for correct
@@ -362,7 +362,7 @@ class postref_handler(object):
             crystal_init_orientation = pres_in.crystal_orientation
 
         two_theta = observations_original.two_theta(wavelength=wavelength).data()
-        partiality_fin, dummy = calc_partiality_anisotropy_set(
+        partiality_fin, dummy, ri_fin = calc_partiality_anisotropy_set(
             uc_fin,
             rotx_fin,
             roty_fin,
@@ -395,6 +395,7 @@ class postref_handler(object):
             refined_params=refined_params,
             stats=stats,
             partiality=partiality_fin,
+            ri_set=ri_fin,
             frame_no=frame_no,
             pickle_filename=pickle_filename,
             wavelength=wavelength,
@@ -622,7 +623,7 @@ class postref_handler(object):
         re = 0.0026
         rotx = 0
         roty = 0
-        partiality_init, delta_xy_init = calc_partiality_anisotropy_set(
+        partiality_init, delta_xy_init, ri_init = calc_partiality_anisotropy_set(
             crystal_init_orientation.unit_cell(),
             rotx,
             roty,
@@ -663,6 +664,7 @@ class postref_handler(object):
             refined_params=refined_params,
             stats=stats,
             partiality=partiality_init,
+            ri_set=ri_init,
             frame_no=frame_no,
             pickle_filename=pickle_filename,
             wavelength=wavelength,
@@ -696,7 +698,8 @@ def calc_avg_I(
     sigI,
     G,
     B,
-    p,
+    p_set,
+    rs_set,
     sin_theta_over_lambda_sq,
     SE,
     avg_mode,
@@ -713,7 +716,8 @@ def calc_avg_I(
         sigI,
         G,
         B,
-        p,
+        p_set,
+        rs_set,
         sin_theta_over_lambda_sq,
         SE,
         avg_mode,

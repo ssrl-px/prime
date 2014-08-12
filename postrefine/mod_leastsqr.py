@@ -86,6 +86,7 @@ def calc_partiality_anisotropy_set(
 
     partiality_set = flex.double()
     delta_xy_set = flex.double()
+    ri_set = flex.double()
     for miller_index, bragg_angle, alpha_angle, spot_pred_x_mm, spot_pred_y_mm in zip(
         miller_indices,
         bragg_angle_set,
@@ -93,15 +94,22 @@ def calc_partiality_anisotropy_set(
         spot_pred_x_mm_set,
         spot_pred_y_mm_set,
     ):
-        rs = math.sqrt(
-            (ry * math.cos(alpha_angle)) ** 2 + (rz * math.sin(alpha_angle)) ** 2
-        ) + (re * math.tan(bragg_angle))
+        # rs = math.sqrt((ry * math.cos(alpha_angle))**2 + (rz * math.sin(alpha_angle))**2) + (re*math.tan(bragg_angle))
+        rs = ry + re * math.tan(bragg_angle)
         h = col(miller_index)
         x = A_star * h
         S = x + S0
         rh = S.length() - (1 / wavelength)
-        spot_partiality = pow(rs, 2) / ((2 * pow(rh, 2)) + pow(rs, 2))
+        # spot_partiality = ((rs**2)/((2*(rh**2))+(rs**2)))
+        if (rs ** 2) - (rh ** 2) > 0:
+            spot_partiality = (math.sqrt((rs ** 2) - (rh ** 2)) ** 3) / (rs ** 3)
+            ri = math.sqrt((rs ** 2) - (rh ** 2))
+        else:
+            spot_partiality = 0.02
+            ri = pow(spot_partiality, 1 / 3) * rs
+
         partiality_set.append(spot_partiality)
+        ri_set.append(ri)
 
         # finding coordinate x,y on the detector
         d_ratio = -detector_distance_mm / S[2]
@@ -112,7 +120,7 @@ def calc_partiality_anisotropy_set(
         diff_xy = pred_xy - calc_xy
         delta_xy_set.append(diff_xy.length())
 
-    return partiality_set, delta_xy_set
+    return partiality_set, delta_xy_set, ri_set
 
 
 def prep_input(params, cs):
@@ -190,7 +198,7 @@ def func(params, *args):
 
     uc = unit_cell((a, b, c, alpha, beta, gamma))
 
-    partiality_model_flex, delta_xy_flex = calc_partiality_anisotropy_set(
+    partiality_model_flex, delta_xy_flex, ri_set = calc_partiality_anisotropy_set(
         uc,
         rotx,
         roty,
@@ -215,12 +223,23 @@ def func(params, *args):
     else:
         I_o_full = (G * I_o) / partiality_model
 
-    # error = ((I_r - I_o_full)/sigI_o) + flex.abs(delta_xy_flex)
+    """
+  error_I = np.absolute((I_r - I_o_full)/sigI_o)
+  sum_err_sqr_I = np.sum(error_I**2)
+  w0 = math.sqrt(1/sum_err_sqr_I)
+
+  error_xy = np.absolute(delta_xy_flex)
+  sum_err_sqr_xy = np.sum(error_xy**2)
+  w1 = math.sqrt(1/sum_err_sqr_xy)
+
+  error = w0*error_I + w1*error_xy
+  """
     if refine_mode == "unit_cell":
         error = delta_xy_flex
     else:
         error = (I_r - I_o_full) / sigI_o
-    # print refine_mode, 'G=%.4g B=%.4g rotx=%.4g roty=%.4g ry=%.4g rz=%.4g re=%.4g a=%.4g b=%.4g c=%.4g alp=%.4g beta=%.4g gam=%.4g f=%.4g'%(G, B, rotx*180/math.pi, roty*180/math.pi, ry, rz, re, a, b, c, alpha, beta, gamma, np.sum(error**2))
+
+    # print refine_mode, 'G=%.4g B=%.4g rotx=%.4g roty=%.4g ry=%.4g re=%.4g a=%.4g b=%.4g c=%.4g alp=%.4g beta=%.4g gam=%.4g f=%.4g'%(G, B, rotx*180/math.pi, roty*180/math.pi, ry, re, a, b, c, alpha, beta, gamma, np.sum(error**2))
     return error
 
 
@@ -502,7 +521,7 @@ class leastsqr_handler(object):
                     wavelength=wavelength
                 ).data()
                 uc = unit_cell((a, b, c, alpha, beta, gamma))
-                partiality_init, delta_xy_init = calc_partiality_anisotropy_set(
+                partiality_init, delta_xy_init, ri_init = calc_partiality_anisotropy_set(
                     uc,
                     rotx,
                     roty,
@@ -648,7 +667,7 @@ class leastsqr_handler(object):
         )
 
         if pres_in is None:
-            partiality_init, delta_xy_init = calc_partiality_anisotropy_set(
+            partiality_init, delta_xy_init, ri_init = calc_partiality_anisotropy_set(
                 crystal_init_orientation.unit_cell(),
                 0.0,
                 0.0,
@@ -671,7 +690,7 @@ class leastsqr_handler(object):
                 * observations_original.data()
             ) / partiality_init
         else:
-            partiality_init, delta_xy_init = calc_partiality_anisotropy_set(
+            partiality_init, delta_xy_init, ri_init = calc_partiality_anisotropy_set(
                 pres_in.unit_cell,
                 0.0,
                 0.0,
@@ -693,7 +712,7 @@ class leastsqr_handler(object):
                 * observations_original.data()
             ) / partiality_init
 
-        partiality_fin, delta_xy_fin = calc_partiality_anisotropy_set(
+        partiality_fin, delta_xy_fin, ri_fin = calc_partiality_anisotropy_set(
             unit_cell((a, b, c, alpha, beta, gamma)),
             rotx,
             roty,
@@ -736,6 +755,7 @@ class leastsqr_handler(object):
         R_xy_init = np.sum(delta_xy_init ** 2)
         R_xy_final = np.sum(delta_xy_fin ** 2)
 
+        print R_init, R_final, CC_init, CC_final
         if R_init < R_final:
             CC_final = CC_init
             R_final = R_init
