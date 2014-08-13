@@ -53,7 +53,7 @@ class intensities_scaler(object):
                 i_seq_sel = i_seq != i_r
                 i_full_sel = I_full.select(i_seq_sel)
                 if (
-                    abs((I_full[i_r] - np.mean(i_full_sel)) / np.std(i_full_sel))
+                    abs((I_full[i_r] - np.median(i_full_sel)) / np.std(i_full_sel))
                     > sigma_max
                 ):
                     # discard this observation
