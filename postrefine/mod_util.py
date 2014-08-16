@@ -31,15 +31,33 @@ class intensities_scaler(object):
         G,
         B,
         p_set,
-        ri_set,
+        rs_set,
         sin_theta_over_lambda_sq,
         SE,
         avg_mode,
         iparams,
     ):
 
-        I_full = (G * flex.exp(-2 * B * sin_theta_over_lambda_sq) * I) / p_set
-        sigI_full = (G * flex.exp(-2 * B * sin_theta_over_lambda_sq) * sigI) / p_set
+        from mod_leastsqr import calc_full_refl
+
+        I_full = calc_full_refl(
+            I,
+            sin_theta_over_lambda_sq,
+            G,
+            B,
+            p_set,
+            rs_set,
+            iparams.flag_volume_correction,
+        )
+        sigI_full = calc_full_refl(
+            sigI,
+            sin_theta_over_lambda_sq,
+            G,
+            B,
+            p_set,
+            rs_set,
+            iparams.flag_volume_correction,
+        )
 
         # filter outliers iteratively (Read, 1999)
         sigma_max = 3
@@ -75,11 +93,11 @@ class intensities_scaler(object):
             SE_norm = (m * SE) + b
 
         if avg_mode == "weighted":
-            I_avg = flex.sum(SE_norm * I_full) / flex.sum(SE_norm)
-            sigI_avg = flex.sum(SE_norm * sigI_full) / flex.sum(SE_norm)
+            I_avg = np.sum(SE_norm * I_full) / np.sum(SE_norm)
+            sigI_avg = np.sum(SE_norm * sigI_full) / np.sum(SE_norm)
         elif avg_mode == "average":
-            I_avg = flex.median(I_full)
-            sigI_avg = flex.median(sigI_full)
+            I_avg = np.mean(I_full)
+            sigI_avg = np.mean(sigI_full)
 
         # Rmeas, Rmeas_w, multiplicity
         multiplicity = len(I_full)
@@ -116,11 +134,11 @@ class intensities_scaler(object):
                 SE_norm_odd.append(SE_norm_even[len(I_even) - 1])
 
             if avg_mode == "weighted":
-                I_avg_even = flex.sum(SE_norm_even * I_even) / flex.sum(SE_norm_even)
-                I_avg_odd = flex.sum(SE_norm_odd * I_odd) / flex.sum(SE_norm_odd)
+                I_avg_even = np.sum(SE_norm_even * I_even) / np.sum(SE_norm_even)
+                I_avg_odd = np.sum(SE_norm_odd * I_odd) / np.sum(SE_norm_odd)
             elif avg_mode == "average":
-                I_avg_even = flex.median(I_even)
-                I_avg_odd = flex.median(I_odd)
+                I_avg_even = np.mean(I_even)
+                I_avg_odd = np.mean(I_odd)
 
         return (
             miller_index,
@@ -157,8 +175,18 @@ class intensities_scaler(object):
                 np.median(gamma_all),
             ]
         )
+        uc_std = flex.double(
+            [
+                np.std(a_all),
+                np.std(b_all),
+                np.std(c_all),
+                np.std(alpha_all),
+                np.std(beta_all),
+                np.std(gamma_all),
+            ]
+        )
 
-        return uc_mean
+        return uc_mean, uc_std
 
     def prepare_output(self, results, iparams, avg_mode):
         if avg_mode == "average":
@@ -184,7 +212,7 @@ class intensities_scaler(object):
         B_all = flex.double()
         k_all = flex.double()
         p_all = flex.double()
-        ri_all = flex.double()
+        rs_all = flex.double()
         SE_all = flex.double()
         sin_sq_all = flex.double()
         wavelength_all = flex.double()
@@ -290,7 +318,7 @@ class intensities_scaler(object):
                                     )
                                 )
                                 p_all.extend(pres.partiality)
-                                ri_all.extend(pres.ri_set)
+                                rs_all.extend(pres.rs_set)
                                 sin_sq_all.extend(sin_theta_over_lambda_sq)
                                 SE_all.extend(
                                     flex.double(
@@ -335,7 +363,7 @@ class intensities_scaler(object):
         self.plot_stats(filtered_results, iparams)
 
         # calculate average unit cell
-        uc_mean = self.calc_mean_unit_cell(filtered_results)
+        uc_mean, uc_std = self.calc_mean_unit_cell(filtered_results)
         unit_cell_mean = unit_cell(
             (uc_mean[0], uc_mean[1], uc_mean[2], uc_mean[3], uc_mean[4], uc_mean[5])
         )
@@ -369,7 +397,7 @@ class intensities_scaler(object):
         G_all_sort = G_all.select(perm)
         B_all_sort = B_all.select(perm)
         p_all_sort = p_all.select(perm)
-        ri_all_sort = ri_all.select(perm)
+        rs_all_sort = rs_all.select(perm)
         sin_sq_all_sort = sin_sq_all.select(perm)
         SE_all_sort = SE_all.select(perm)
 
@@ -421,6 +449,23 @@ class intensities_scaler(object):
             np.median(R_xy_final_all),
             np.std(R_xy_final_all),
         )
+        txt_out += (
+            "Average unit-cell parameters: %5.2f(%5.2f) %5.2f(%5.2f) %5.2f(%5.2f) %5.2f(%5.2f) %5.2f(%5.2f) %5.2f(%5.2f)"
+            % (
+                uc_mean[0],
+                uc_std[0],
+                uc_mean[1],
+                uc_std[1],
+                uc_mean[2],
+                uc_std[2],
+                uc_mean[3],
+                uc_std[3],
+                uc_mean[4],
+                uc_std[4],
+                uc_mean[5],
+                uc_std[5],
+            )
+        )
         txt_out += "\n"
 
         return (
@@ -432,7 +477,7 @@ class intensities_scaler(object):
             G_all_sort,
             B_all_sort,
             p_all_sort,
-            ri_all_sort,
+            rs_all_sort,
             sin_sq_all_sort,
             SE_all_sort,
             uc_mean,
@@ -686,23 +731,6 @@ class intensities_scaler(object):
                         * math.sqrt(n_refl_cciso_bin / (n_refl_cciso_bin - 1))
                     ) / flex.sum((I_merge_match_iso / sigI_merge_match_iso) ** 2)
 
-                if iparams.flag_plot_expert:
-                    plt.scatter(I_iso, I_merge_match_iso, s=10, marker="x", c="r")
-                    plt.title(
-                        "bin %3.0f CC=%.4g meanI=%.4g std=%.4g sqrt_meanI=%.4g mul=%.4g"
-                        % (
-                            i,
-                            cc_iso_bin,
-                            np.mean(I_merge_match_iso),
-                            np.std(I_merge_match_iso),
-                            math.sqrt(np.mean(I_merge_match_iso)),
-                            math.sqrt(np.mean(I_merge_match_iso)) * 2.5,
-                        )
-                    )
-                    plt.xlabel("I_ref")
-                    plt.ylabel("I_obs")
-                    plt.show()
-
             txt_out += (
                 "%02d %7.2f - %7.2f %5.1f %6.0f / %6.0f %7.2f %7.2f %7.2f %7.2f %6.0f %7.2f %6.0f %8.2f %10.2f"
                 % (
@@ -814,11 +842,6 @@ class intensities_scaler(object):
             )
         )
         txt_out += "--------------------------------------------------------------------------------------------------------------------\n"
-        txt_out += (
-            "Average unit-cell parameters: (%6.2f, %6.2f, %6.2f %6.2f, %6.2f, %6.2f)"
-            % (uc_mean[0], uc_mean[1], uc_mean[2], uc_mean[3], uc_mean[4], uc_mean[5])
-        )
-        txt_out += "\n"
 
         return miller_array_merge, txt_out, csv_out
 

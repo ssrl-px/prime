@@ -61,7 +61,7 @@ def calc_average_I_mproc(
     G_all,
     B_all,
     p_all,
-    ri_all,
+    rs_all,
     sin_theta_over_lambda_sq_all,
     SE_all,
     avg_mode,
@@ -75,7 +75,7 @@ def calc_average_I_mproc(
     G = G_all.select(i_sel)
     B = B_all.select(i_sel)
     p_set = p_all.select(i_sel)
-    ri_set = ri_all.select(i_sel)
+    rs_set = rs_all.select(i_sel)
     sin_theta_over_lambda_sq = sin_theta_over_lambda_sq_all.select(i_sel)
     SE = SE_all.select(i_sel)
 
@@ -89,7 +89,7 @@ def calc_average_I_mproc(
         G,
         B,
         p_set,
-        ri_set,
+        rs_set,
         sin_theta_over_lambda_sq,
         SE,
         avg_mode,
@@ -166,7 +166,7 @@ if __name__ == "__main__":
         prep_output = prepare_output(observations_merge_mean_set, iparams, avg_mode)
 
         if prep_output is not None:
-            cn_group, group_id_list, miller_indices_all_sort, I_obs_all_sort, sigI_obs_all_sort, G_all_sort, B_all_sort, p_all_sort, ri_all_sort, sin_sq_all_sort, SE_all_sort, uc_mean, wavelength_mean, txt_prep_out = (
+            cn_group, group_id_list, miller_indices_all_sort, I_obs_all_sort, sigI_obs_all_sort, G_all_sort, B_all_sort, p_all_sort, rs_all_sort, sin_sq_all_sort, SE_all_sort, uc_mean, wavelength_mean, txt_prep_out = (
                 prep_output
             )
 
@@ -180,7 +180,7 @@ if __name__ == "__main__":
                     G_all_sort,
                     B_all_sort,
                     p_all_sort,
-                    ri_all_sort,
+                    rs_all_sort,
                     sin_sq_all_sort,
                     SE_all_sort,
                     avg_mode,
@@ -299,7 +299,7 @@ if __name__ == "__main__":
             prep_output = prepare_output(postrefine_by_frame_good, iparams, avg_mode)
 
             if prep_output is not None:
-                cn_group, group_id_list, miller_indices_all_sort, I_obs_all_sort, sigI_obs_all_sort, G_all_sort, B_all_sort, p_all_sort, ri_all_sort, sin_sq_all_sort, SE_all_sort, uc_mean, wavelength_mean, txt_prep_out = (
+                cn_group, group_id_list, miller_indices_all_sort, I_obs_all_sort, sigI_obs_all_sort, G_all_sort, B_all_sort, p_all_sort, rs_all_sort, sin_sq_all_sort, SE_all_sort, uc_mean, wavelength_mean, txt_prep_out = (
                     prep_output
                 )
 
@@ -313,7 +313,7 @@ if __name__ == "__main__":
                         G_all_sort,
                         B_all_sort,
                         p_all_sort,
-                        ri_all_sort,
+                        rs_all_sort,
                         sin_sq_all_sort,
                         SE_all_sort,
                         avg_mode,
