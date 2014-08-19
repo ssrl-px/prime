@@ -61,7 +61,7 @@ def calc_spot_radius(a_star_matrix, miller_indices, wavelength):
 
     spot_radius = math.sqrt(flex.mean(delta_S_all * delta_S_all))
 
-    return 0
+    return spot_radius
 
 
 def coefficient_of_determination(y, y_model):
@@ -82,6 +82,7 @@ def calc_partiality_anisotropy_set(
     miller_indices,
     ry,
     rz,
+    r0,
     re,
     bragg_angle_set,
     alpha_angle_set,
@@ -129,11 +130,14 @@ def calc_partiality_anisotropy_set(
                 spot_partiality = 0.02
         elif partiality_model == "Kabsch":
             # Kabsch
-            t = rh * 2.5 / (math.sqrt(2) * rs)
+            t = rh / (math.sqrt(2) * rs)
             spot_partiality = math.exp(-(t ** 2))
         elif partiality_model == "Rossmann":
-            q = (rs - rh) / (2 * rs)
-            spot_partiality = (3 * (q ** 2)) - (2 * (q ** 3))
+            if abs(rs) - abs(rh) > 0:
+                q = (rs - rh) / (2 * rs)
+                spot_partiality = (3 * (q ** 2)) - (2 * (q ** 3))
+            else:
+                spot_partiality = 0.02
 
         partiality_set.append(spot_partiality)
         rs_set.append(rs)
@@ -200,6 +204,7 @@ def func(params, *args):
     const_params = args[10]
     partiality_model = args[11]
     flag_volume_correction = args[12]
+    r0 = args[13]
     I_o = miller_array_o.data().as_numpy_array()
     sigI_o = miller_array_o.sigmas().as_numpy_array()
     miller_indices_original = miller_array_o.indices()
@@ -234,6 +239,7 @@ def func(params, *args):
         miller_indices_original,
         ry,
         rz,
+        r0,
         re,
         two_theta_flex,
         alpha_angle_set,
@@ -339,8 +345,8 @@ class leastsqr_handler(object):
         )
         G = np.median(I_ref_sel) / np.median(observations_original_sel.data())
         B = 0
-        ry = spot_radius
-        rz = spot_radius
+        ry = 0
+        rz = 0
         re = self.gamma_e
         rotx = 0.0
         roty = 0.0
@@ -367,6 +373,7 @@ class leastsqr_handler(object):
                 const_params,
                 iparams.partiality_model,
                 iparams.flag_volume_correction,
+                spot_radius,
             ),
             full_output=True,
             maxfev=100,
@@ -383,6 +390,7 @@ class leastsqr_handler(object):
             observations_original.indices(),
             ry,
             rz,
+            spot_radius,
             re,
             two_theta.data(),
             alpha_angle,
@@ -535,12 +543,12 @@ class leastsqr_handler(object):
 
                 # initialize values only in the first sub cycle and the first refine step.
                 if j_refine_step == 0 and i_sub_cycle == 0:
+                    spot_radius = calc_spot_radius(
+                        sqr(crystal_init_orientation.reciprocal_matrix()),
+                        observations_original_sel.indices(),
+                        wavelength,
+                    )
                     if pres_in is None:
-                        spot_radius = calc_spot_radius(
-                            sqr(crystal_init_orientation.reciprocal_matrix()),
-                            observations_original_sel.indices(),
-                            wavelength,
-                        )
                         xopt_scalefactors, stats = self.optimize_scalefactors(
                             I_r_flex,
                             observations_original,
@@ -555,8 +563,8 @@ class leastsqr_handler(object):
                             detector_distance_mm,
                         )
                         G, B = xopt_scalefactors
-                        ry = spot_radius
-                        rz = spot_radius
+                        ry = 0
+                        rz = 0
                         re = self.gamma_e
                         rotx = 0.0
                         roty = 0.0
@@ -586,6 +594,7 @@ class leastsqr_handler(object):
                     observations_original_sel.indices(),
                     ry,
                     rz,
+                    spot_radius,
                     re,
                     two_theta,
                     alpha_angle_sel,
@@ -646,6 +655,7 @@ class leastsqr_handler(object):
                         const_params,
                         iparams.partiality_model,
                         iparams.flag_volume_correction,
+                        spot_radius,
                     ),
                     full_output=True,
                     maxfev=100,
@@ -716,6 +726,7 @@ class leastsqr_handler(object):
                 const_params,
                 iparams.partiality_model,
                 iparams.flag_volume_correction,
+                spot_radius,
             ),
             full_output=True,
             maxfev=100,
@@ -735,6 +746,7 @@ class leastsqr_handler(object):
                 0.0,
                 0.0,
                 observations_original.indices(),
+                spot_radius,
                 spot_radius,
                 spot_radius,
                 self.gamma_e,
@@ -765,6 +777,7 @@ class leastsqr_handler(object):
                 observations_original.indices(),
                 pres_in.ry,
                 pres_in.rz,
+                spot_radius,
                 pres_in.re,
                 two_theta,
                 alpha_angle,
@@ -792,6 +805,7 @@ class leastsqr_handler(object):
             observations_original.indices(),
             ry,
             rz,
+            spot_radius,
             re,
             two_theta,
             alpha_angle,
@@ -847,8 +861,8 @@ class leastsqr_handler(object):
                 )
                 G = 1.0
                 B = 0.0
-                ry = spot_radius
-                rz = spot_radius
+                ry = 0
+                rz = 0
                 re = self.gamma_e
                 rotx = 0.0
                 roty = 0.0
@@ -924,6 +938,7 @@ class leastsqr_handler(object):
             print "roty %.4g (%.4g degrees)" % (roty, roty * 180 / math.pi)
             print "ry %.4g" % (ry)
             print "rz %.4g" % (rz)
+            print "r0 %.4g" % (spot_radius)
             print "re %.4g" % (re)
             print "uc", a, b, c, alpha, beta, gamma
             print "S = %.4g" % SE_of_the_estimate
@@ -991,8 +1006,8 @@ class leastsqr_handler(object):
                 linestyle="-",
                 linewidth=2.0,
                 c="r",
-                label="Initial ry=%.4g ry=%.4g re=%.4g"
-                % (spot_radius, spot_radius, self.gamma_e),
+                label="Initial ry=%.4g ry=%.4g r0=%.4g re=%.4g"
+                % (0, 0, spot_radius, self.gamma_e),
             )
             plt.plot(
                 one_dsqr_sort,
@@ -1000,7 +1015,8 @@ class leastsqr_handler(object):
                 linestyle="-",
                 linewidth=2.0,
                 c="b",
-                label="Final ry=%.4g ry=%.4g re=%.4g" % (ry, rz, re),
+                label="Final ry=%.4g ry=%.4g r0=%.4g re=%.4g"
+                % (ry, rz, spot_radius, re),
             )
             legend = plt.legend(loc="lower right", shadow=False)
             for label in legend.get_texts():

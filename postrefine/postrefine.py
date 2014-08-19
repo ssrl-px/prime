@@ -51,12 +51,13 @@ class postref_handler(object):
         # Lorentz-polarization correction
         wavelength = observations_pickle["wavelength"]
 
-        two_theta = observations.two_theta(wavelength=wavelength).data()
-        one_over_P = 2 / (1 + (flex.cos(two_theta) ** 2))
-        one_over_LP = (8 * (flex.sin(two_theta / 2))) / (1 + (flex.cos(two_theta) ** 2))
-        observations = observations.customized_copy(
-            data=observations.data() * one_over_P
-        )
+        if iparams.flag_LP_correction:
+            two_theta = observations.two_theta(wavelength=wavelength).data()
+            one_over_P = 2 / (1 + (flex.cos(two_theta) ** 2))
+            one_over_L = 2 * (flex.sin(two_theta / 2) ** 2)
+            observations = observations.customized_copy(
+                data=observations.data() * one_over_L * one_over_P
+            )
 
         # set observations with target space group - !!! required for correct
         # merging due to map_to_asu command.
@@ -355,6 +356,13 @@ class postref_handler(object):
             observations_original, polar_hkl
         )
         from mod_leastsqr import calc_partiality_anisotropy_set
+        from mod_leastsqr import calc_spot_radius
+
+        spot_radius = calc_spot_radius(
+            sqr(crystal_init_orientation.reciprocal_matrix()),
+            observations_original_sel.indices(),
+            wavelength,
+        )
         from cctbx.uctbx import unit_cell
 
         uc_fin = unit_cell((a_fin, b_fin, c_fin, alpha_fin, beta_fin, gamma_fin))
@@ -369,6 +377,7 @@ class postref_handler(object):
             observations_original.indices(),
             ry_fin,
             rz_fin,
+            spot_radius,
             re_fin,
             two_theta,
             alpha_angle,
@@ -619,8 +628,8 @@ class postref_handler(object):
             .sin_theta_over_lambda_sq()
             .data()
         )
-        ry = spot_radius
-        rz = spot_radius
+        ry = 0
+        rz = 0
         re = 0.003
         rotx = 0
         roty = 0
@@ -631,6 +640,7 @@ class postref_handler(object):
             observations_original.indices(),
             ry,
             rz,
+            spot_radius,
             re,
             two_theta,
             alpha_angle,
