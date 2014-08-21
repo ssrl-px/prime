@@ -33,15 +33,9 @@ import logging
 def calc_full_refl(
     I_o_p_set, sin_theta_over_lambda_sq_set, G, B, p_set, rs_set, flag_volume_correction
 ):
-    if flag_volume_correction:
-        I_o_full_set = flex.double(
-            ((G * np.exp(-2 * B * sin_theta_over_lambda_sq_set) * I_o_p_set) / p_set)
-            * ((4 / 3) * rs_set)
-        )
-    else:
-        I_o_full_set = flex.double(
-            ((G * np.exp(-2 * B * sin_theta_over_lambda_sq_set) * I_o_p_set) / p_set)
-        )
+    I_o_full_set = flex.double(
+        ((G * np.exp(-2 * B * sin_theta_over_lambda_sq_set) * I_o_p_set) / p_set)
+    )
     return I_o_full_set
 
 
@@ -59,7 +53,7 @@ def calc_spot_radius(a_star_matrix, miller_indices, wavelength):
             logging.warning("Rh is woryingly large: {}".format(delta_S))
         logging.debug("Delta S: {}".format(delta_S))
 
-    spot_radius = math.sqrt(flex.mean(delta_S_all * delta_S_all))
+    spot_radius = 0.5 * math.sqrt(flex.mean(delta_S_all * delta_S_all))
 
     return spot_radius
 
@@ -113,15 +107,15 @@ def calc_partiality_anisotropy_set(
     ):
         rs = math.sqrt(
             (ry * math.cos(alpha_angle)) ** 2 + (rz * math.sin(alpha_angle)) ** 2
-        ) + (re * math.tan(bragg_angle))
+        ) + (r0 + (re * math.tan(bragg_angle)))
         h = col(miller_index)
         x = A_star * h
         S = x + S0
         rh = S.length() - (1 / wavelength)
 
         if partiality_model == "Lorentzian":
-            # Lorenzian
-            spot_partiality = (rs ** 2) / ((2 * (rh ** 2)) + (rs ** 2))
+            # Lorenzian GAMMA=rs
+            spot_partiality = (rs ** 2) / ((4 * (rh ** 2)) + (rs ** 2))
         elif partiality_model == "Disc":
             # Disc
             if abs(rs) - abs(rh) > 0:
