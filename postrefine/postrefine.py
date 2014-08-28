@@ -53,11 +53,8 @@ class postref_handler(object):
 
         if iparams.flag_LP_correction:
             two_theta = observations.two_theta(wavelength=wavelength).data()
-            one_over_P = 2 / (1 + (flex.cos(two_theta) ** 2))
-            one_over_L = 2 * (flex.sin(two_theta / 2) ** 2)
-            observations = observations.customized_copy(
-                data=observations.data() * one_over_P
-            )
+            P = (1 + (flex.cos(two_theta) ** 2)) / 2
+            observations = observations.customized_copy(data=observations.data() / P)
 
         # set observations with target space group - !!! required for correct
         # merging due to map_to_asu command.
@@ -331,7 +328,7 @@ class postref_handler(object):
 
         # 4. Do least-squares refinement
         lsqrh = leastsqr_handler()
-        refined_params, stats, n_refl_postrefined = lsqrh.optimize(
+        refined_params, stats, n_refl_postrefined, spot_radius = lsqrh.optimize(
             I_ref_match,
             observations_original_sel,
             wavelength,
@@ -356,13 +353,6 @@ class postref_handler(object):
             observations_original, polar_hkl
         )
         from mod_leastsqr import calc_partiality_anisotropy_set
-        from mod_leastsqr import calc_spot_radius
-
-        spot_radius = calc_spot_radius(
-            sqr(crystal_init_orientation.reciprocal_matrix()),
-            observations_original_sel.indices(),
-            wavelength,
-        )
         from cctbx.uctbx import unit_cell
 
         uc_fin = unit_cell((a_fin, b_fin, c_fin, alpha_fin, beta_fin, gamma_fin))
@@ -410,6 +400,7 @@ class postref_handler(object):
             pickle_filename=pickle_filename,
             wavelength=wavelength,
             crystal_orientation=crystal_fin_orientation,
+            spot_radius=spot_radius,
         )
         print "%6.0f %5.2f %8.0f %8.0f %8.2f %8.2f %8.2f %8.2f %9.2f %7.2f %10.2f %10.2f   " % (
             pres.frame_no,
@@ -594,7 +585,7 @@ class postref_handler(object):
 
                 # 4. Do least-squares refinement
                 lsqrh = leastsqr_handler()
-                refined_params, stats = lsqrh.optimize_scalefactors(
+                refined_params, stats, spot_radius = lsqrh.optimize_scalefactors(
                     I_ref_match,
                     observations_original_sel,
                     wavelength,
@@ -615,13 +606,8 @@ class postref_handler(object):
             stats = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
         # calculate initial partiality
-        from mod_leastsqr import calc_spot_radius
         from mod_leastsqr import calc_partiality_anisotropy_set
 
-        a_star_init = sqr(crystal_init_orientation.reciprocal_matrix())
-        spot_radius = calc_spot_radius(
-            a_star_init, observations_original.indices(), wavelength
-        )
         two_theta = observations_original.two_theta(wavelength=wavelength).data()
         sin_theta_over_lambda_sq = (
             observations_original.two_theta(wavelength=wavelength)
@@ -630,7 +616,7 @@ class postref_handler(object):
         )
         ry = 0
         rz = 0
-        re = 0.003
+        re = 0
         rotx = 0
         roty = 0
         partiality_init, delta_xy_init, rs_init = calc_partiality_anisotropy_set(
@@ -680,6 +666,7 @@ class postref_handler(object):
             frame_no=frame_no,
             pickle_filename=pickle_filename,
             wavelength=wavelength,
+            spot_radius=spot_radius,
         )
 
         print "frame %6.0f" % frame_no, "<I>=%9.2f <G>=%9.2f G=%9.2f B=%9.2f nrefl=%5.0f nrefl_used=%5.0f" % (

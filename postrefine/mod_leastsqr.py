@@ -27,15 +27,23 @@ from cctbx.array_family import flex
 from scitbx.matrix import sqr, col
 from cctbx.uctbx import unit_cell
 from cctbx.crystal_orientation import crystal_orientation, basis_type
-import logging
 
 
 def calc_full_refl(
-    I_o_p_set, sin_theta_over_lambda_sq_set, G, B, p_set, rs_set, flag_volume_correction
+    I_o_p_set,
+    sin_theta_over_lambda_sq_set,
+    G,
+    B,
+    p_set,
+    rs_set,
+    flag_volume_correction=False,
 ):
     I_o_full_set = flex.double(
         ((G * np.exp(-2 * B * sin_theta_over_lambda_sq_set) * I_o_p_set) / p_set)
     )
+
+    if flag_volume_correction:
+        I_o_full_set = I_o_full_set * ((4 / 3) * rs_set)
     return I_o_full_set
 
 
@@ -49,11 +57,8 @@ def calc_spot_radius(a_star_matrix, miller_indices, wavelength):
         S = x + S0
         delta_S = S.length() - (1.0 / wavelength)
         delta_S_all.append(delta_S)
-        if delta_S > 0.1:
-            logging.warning("Rh is woryingly large: {}".format(delta_S))
-        logging.debug("Delta S: {}".format(delta_S))
 
-    spot_radius = 0.5 * math.sqrt(flex.mean(delta_S_all * delta_S_all))
+    spot_radius = math.sqrt(flex.mean(delta_S_all * delta_S_all))
 
     return spot_radius
 
@@ -114,8 +119,8 @@ def calc_partiality_anisotropy_set(
         rh = S.length() - (1 / wavelength)
 
         if partiality_model == "Lorentzian":
-            # Lorenzian GAMMA=rs
-            spot_partiality = (rs ** 2) / ((4 * (rh ** 2)) + (rs ** 2))
+            # Lorenzian
+            spot_partiality = (rs ** 2) / ((2 * (rh ** 2)) + (rs ** 2))
         elif partiality_model == "Disc":
             # Disc
             if abs(rs) - abs(rh) > 0:
@@ -197,8 +202,7 @@ def func(params, *args):
     refine_mode = args[9]
     const_params = args[10]
     partiality_model = args[11]
-    flag_volume_correction = args[12]
-    r0 = args[13]
+    r0 = args[12]
     I_o = miller_array_o.data().as_numpy_array()
     sigI_o = miller_array_o.sigmas().as_numpy_array()
     miller_indices_original = miller_array_o.indices()
@@ -248,24 +252,12 @@ def func(params, *args):
 
     if miller_array_o.d_min() < b_refine_d_min:
         I_o_full = calc_full_refl(
-            I_o,
-            sin_theta_over_lambda_sq,
-            G,
-            B,
-            p_calc_set,
-            rs_set,
-            flag_volume_correction,
+            I_o, sin_theta_over_lambda_sq, G, B, p_calc_set, rs_set
         )
 
     else:
         I_o_full = calc_full_refl(
-            I_o,
-            sin_theta_over_lambda_sq,
-            G,
-            0,
-            p_calc_set,
-            rs_set,
-            flag_volume_correction,
+            I_o, sin_theta_over_lambda_sq, G, 0, p_calc_set, rs_set
         )
 
     if refine_mode == "unit_cell":
@@ -281,7 +273,7 @@ class leastsqr_handler(object):
 
     def __init__(self):
         """Intialitze parameters."""
-        self.gamma_e = 0.003
+        self.gamma_e = 0
 
     def optimize_scalefactors(
         self,
@@ -366,7 +358,6 @@ class leastsqr_handler(object):
                 refine_mode,
                 const_params,
                 iparams.partiality_model,
-                iparams.flag_volume_correction,
                 spot_radius,
             ),
             full_output=True,
@@ -403,7 +394,6 @@ class leastsqr_handler(object):
             B,
             partiality_init,
             rs_init,
-            iparams.flag_volume_correction,
         )
         I_o_fin = calc_full_refl(
             observations_original.data(),
@@ -412,7 +402,6 @@ class leastsqr_handler(object):
             B_fin,
             partiality_init,
             rs_init,
-            iparams.flag_volume_correction,
         )
 
         SE_of_the_estimate = standard_error_of_the_estimate(
@@ -430,8 +419,8 @@ class leastsqr_handler(object):
 
         CC_init = np.corrcoef(I_r_flex, I_o_init)[0, 1]
         CC_final = np.corrcoef(I_r_flex, I_o_fin)[0, 1]
-        R_init = np.sum(((I_r_flex - I_o_init) / observations_original.sigmas()) ** 2)
-        R_final = np.sum(((I_r_flex - I_o_fin) / observations_original.sigmas()) ** 2)
+        R_init = np.sum(((I_r_flex - I_o_init)) ** 2) / np.sum(I_o_init ** 2)
+        R_final = np.sum(((I_r_flex - I_o_fin)) ** 2) / np.sum(I_o_fin ** 2)
         R_xy_init = 0
         R_xy_final = 0
         CC_iso_init = 0
@@ -451,6 +440,7 @@ class leastsqr_handler(object):
                 CC_iso_init,
                 CC_iso_final,
             ),
+            spot_radius,
         )
 
     def optimize(
@@ -543,7 +533,7 @@ class leastsqr_handler(object):
                         wavelength,
                     )
                     if pres_in is None:
-                        xopt_scalefactors, stats = self.optimize_scalefactors(
+                        xopt_scalefactors, stats, spot_radius = self.optimize_scalefactors(
                             I_r_flex,
                             observations_original,
                             wavelength,
@@ -571,6 +561,7 @@ class leastsqr_handler(object):
                         ry = pres_in.ry
                         rz = pres_in.rz
                         re = pres_in.re
+                        spot_radius = pres_in.spot_radius
                         rotx = 0.0
                         roty = 0.0
                         a, b, c, alpha, beta, gamma = pres_in.unit_cell.parameters()
@@ -648,7 +639,6 @@ class leastsqr_handler(object):
                         refine_mode,
                         const_params,
                         iparams.partiality_model,
-                        iparams.flag_volume_correction,
                         spot_radius,
                     ),
                     full_output=True,
@@ -719,7 +709,6 @@ class leastsqr_handler(object):
                 refine_mode,
                 const_params,
                 iparams.partiality_model,
-                iparams.flag_volume_correction,
                 spot_radius,
             ),
             full_output=True,
@@ -761,7 +750,6 @@ class leastsqr_handler(object):
                 0,
                 partiality_init,
                 rs_init,
-                iparams.flag_volume_correction,
             )
         else:
             partiality_init, delta_xy_init, rs_init = calc_partiality_anisotropy_set(
@@ -789,7 +777,6 @@ class leastsqr_handler(object):
                 pres_in.B,
                 partiality_init,
                 rs_init,
-                iparams.flag_volume_correction,
             )
 
         partiality_fin, delta_xy_fin, rs_fin = calc_partiality_anisotropy_set(
@@ -817,7 +804,6 @@ class leastsqr_handler(object):
             B,
             partiality_fin,
             rs_fin,
-            iparams.flag_volume_correction,
         )
         SE_of_the_estimate = standard_error_of_the_estimate(
             I_r_flex / observations_original.sigmas(),
@@ -834,12 +820,8 @@ class leastsqr_handler(object):
 
         CC_init = np.corrcoef(I_r_flex, I_o_init)[0, 1]
         CC_final = np.corrcoef(I_r_flex, I_o_fin)[0, 1]
-        R_init = np.sum(
-            ((I_r_flex - I_o_init) / observations_original.sigmas()) ** 2
-        ) / np.sum(I_r_flex)
-        R_final = np.sum(
-            ((I_r_flex - I_o_fin) / observations_original.sigmas()) ** 2
-        ) / np.sum(I_r_flex)
+        R_init = np.sum(((I_r_flex - I_o_init)) ** 2) / np.sum(I_o_init ** 2)
+        R_final = np.sum(((I_r_flex - I_o_fin)) ** 2) / np.sum(I_o_fin ** 2)
         R_xy_init = np.sum(delta_xy_init ** 2)
         R_xy_final = np.sum(delta_xy_fin ** 2)
 
@@ -869,6 +851,7 @@ class leastsqr_handler(object):
                 ry = pres_in.ry
                 rz = pres_in.rz
                 re = pres_in.re
+                spot_radius = pres_in.spot_radius
                 rotx = 0.0
                 roty = 0.0
                 a, b, c, alpha, beta, gamma = pres_in.unit_cell.parameters()
@@ -1037,4 +1020,5 @@ class leastsqr_handler(object):
                 CC_iso_final,
             ),
             len(I_ref_sel),
+            spot_radius,
         )
