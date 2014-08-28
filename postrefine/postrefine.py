@@ -509,6 +509,13 @@ class postref_handler(object):
             observations_original, polar_hkl
         )
         uc_params = crystal_init_orientation.unit_cell().parameters()
+        from mod_leastsqr import calc_spot_radius
+
+        spot_radius = calc_spot_radius(
+            sqr(crystal_init_orientation.reciprocal_matrix()),
+            observations_original_sel.indices(),
+            wavelength,
+        )
 
         # if the reference set is given, G is calculated from the common reflections.
         G = 0
