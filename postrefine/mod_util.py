@@ -513,10 +513,6 @@ class intensities_scaler(object):
             pr_params_mean[3],
             pr_params_std[3],
         )
-        txt_out += " gamma_0:                  %12.5f (%7.5f)\n" % (
-            pr_params_mean[5],
-            pr_params_std[5],
-        )
         txt_out += " gamma_e:                  %12.5f (%7.5f)\n" % (
             pr_params_mean[4],
             pr_params_std[4],

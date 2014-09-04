@@ -52,9 +52,26 @@ class postref_handler(object):
         wavelength = observations_pickle["wavelength"]
 
         if iparams.flag_LP_correction:
-            two_theta = observations.two_theta(wavelength=wavelength).data()
-            P = (1 + (flex.cos(two_theta) ** 2)) / 2
-            observations = observations.customized_copy(data=observations.data() / P)
+            mm_displacements = flex.vec3_double()
+            cos_two_polar_angle = flex.double()
+            for pred in mm_predictions:
+                mm_displacements.append((pred[0] - xbeam, pred[1] - ybeam, 0.0))
+                cos_two_polar_angle.append(
+                    math.cos(2.0 * math.atan2(pred[1] - ybeam, pred[0] - xbeam))
+                )
+            assert observations.size() == cos_two_polar_angle.size()
+            tt_vec = observations.two_theta(wavelength)
+            cos_tt_vec = flex.cos(tt_vec.data())
+            sin_tt_vec = flex.sin(tt_vec.data())
+            cos_sq_tt_vec = cos_tt_vec * cos_tt_vec
+            sin_sq_tt_vec = sin_tt_vec * sin_tt_vec
+            P_nought_vec = 0.5 * (1.0 + cos_sq_tt_vec)
+
+            F_prime = -1.0  # Hard-coded value defines the incident polarization axis
+            P_prime = 0.5 * F_prime * cos_two_polar_angle * sin_sq_tt_vec
+            observations = observations.customized_copy(
+                data=observations.data() / (P_nought_vec - P_prime)
+            )
 
         # set observations with target space group - !!! required for correct
         # merging due to map_to_asu command.
@@ -352,7 +369,7 @@ class postref_handler(object):
         observations_non_polar = self.get_observations_non_polar(
             observations_original, polar_hkl
         )
-        from mod_leastsqr import calc_partiality_anisotropy_set
+
         from cctbx.uctbx import unit_cell
 
         uc_fin = unit_cell((a_fin, b_fin, c_fin, alpha_fin, beta_fin, gamma_fin))
@@ -360,6 +377,8 @@ class postref_handler(object):
             crystal_init_orientation = pres_in.crystal_orientation
 
         two_theta = observations_original.two_theta(wavelength=wavelength).data()
+        from mod_leastsqr import calc_partiality_anisotropy_set
+
         partiality_fin, dummy, rs_fin = calc_partiality_anisotropy_set(
             uc_fin,
             rotx_fin,
@@ -621,9 +640,9 @@ class postref_handler(object):
             .sin_theta_over_lambda_sq()
             .data()
         )
-        ry = 0
-        rz = 0
-        re = 0
+        ry = spot_radius
+        rz = spot_radius
+        re = 0.00
         rotx = 0
         roty = 0
         partiality_init, delta_xy_init, rs_init = calc_partiality_anisotropy_set(
