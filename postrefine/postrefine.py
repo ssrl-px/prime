@@ -421,7 +421,7 @@ class postref_handler(object):
             crystal_orientation=crystal_fin_orientation,
             spot_radius=spot_radius,
         )
-        print "%6.0f %5.2f %8.0f %8.0f %8.2f %8.2f %8.2f %8.2f %9.2f %7.2f %10.2f %10.2f   " % (
+        print "%6.0f %5.2f %8.0f %8.0f %8.2f %8.2f %8.2f %8.2f %9.2f %7.2f %10.2f %10.2f %5.2f" % (
             pres.frame_no,
             observations_non_polar.d_min(),
             len(observations_non_polar.indices()),
@@ -434,6 +434,7 @@ class postref_handler(object):
             pres.CC_final * 100,
             pres.CC_iso_init * 100,
             pres.CC_iso_final * 100,
+            pres.SE,
         ), polar_hkl
 
         return pres
@@ -463,7 +464,7 @@ class postref_handler(object):
 
         if len(observations_sel.data().select(i_sel)) == 0:
             return None
-        mean_I = np.median(observations_sel.data().select(i_sel))
+        mean_I = np.sum(observations_sel.data().select(i_sel))
 
         return mean_I
 
@@ -627,7 +628,7 @@ class postref_handler(object):
                 G, B = refined_params
 
         if G == 0:
-            G = mean_of_mean_I / np.median(observations_original_sel.data())
+            G = mean_of_mean_I / np.sum(observations_original_sel.data())
             B = 0
             stats = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
@@ -642,7 +643,7 @@ class postref_handler(object):
         )
         ry = spot_radius
         rz = spot_radius
-        re = 0.00
+        re = 0.002
         rotx = 0
         roty = 0
         partiality_init, delta_xy_init, rs_init = calc_partiality_anisotropy_set(
@@ -696,7 +697,7 @@ class postref_handler(object):
         )
 
         print "frame %6.0f" % frame_no, "<I>=%9.2f <G>=%9.2f G=%9.2f B=%9.2f nrefl=%5.0f nrefl_used=%5.0f" % (
-            np.median(observations_non_polar_sel.data()),
+            np.sum(observations_non_polar_sel.data()),
             mean_of_mean_I,
             G,
             B,
