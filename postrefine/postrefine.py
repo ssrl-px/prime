@@ -111,31 +111,6 @@ class postref_handler(object):
         spot_pred_x_mm = spot_pred_x_mm.select(i_sel)
         spot_pred_y_mm = spot_pred_y_mm.select(i_sel)
 
-        # Remove negative intensity
-        i_sel = observations.data() > 0
-        observations = observations.customized_copy(
-            indices=observations.indices().select(i_sel),
-            data=observations.data().select(i_sel),
-            sigmas=observations.sigmas().select(i_sel),
-        )
-        alpha_angle_obs = alpha_angle_obs.select(i_sel)
-        spot_pred_x_mm = spot_pred_x_mm.select(i_sel)
-        spot_pred_y_mm = spot_pred_y_mm.select(i_sel)
-
-        # Remove outliers using Wilson statistic
-        from mod_outlier import outlier_handler
-
-        olh = outlier_handler()
-        i_sel = olh.good_i_flags(observations, iparams)
-        observations = observations.customized_copy(
-            indices=observations.indices().select(i_sel),
-            data=observations.data().select(i_sel),
-            sigmas=observations.sigmas().select(i_sel),
-        )
-        alpha_angle_obs = alpha_angle_obs.select(i_sel)
-        spot_pred_x_mm = spot_pred_x_mm.select(i_sel)
-        spot_pred_y_mm = spot_pred_y_mm.select(i_sel)
-
         # calculate Wilson scale and B-factor only when data extend to high reslution
         wilson_b = 0
 
@@ -421,7 +396,7 @@ class postref_handler(object):
             crystal_orientation=crystal_fin_orientation,
             spot_radius=spot_radius,
         )
-        print "%6.0f %5.2f %8.0f %8.0f %8.2f %8.2f %8.2f %8.2f %9.2f %7.2f %10.2f %10.2f %5.2f" % (
+        print "%6.0f %5.2f %8.0f %8.0f %8.2f %8.2f %8.2f %8.2f %9.2f %7.2f %10.2f %10.2f   " % (
             pres.frame_no,
             observations_non_polar.d_min(),
             len(observations_non_polar.indices()),
@@ -434,7 +409,6 @@ class postref_handler(object):
             pres.CC_final * 100,
             pres.CC_iso_init * 100,
             pres.CC_iso_final * 100,
-            pres.SE,
         ), polar_hkl
 
         return pres
@@ -643,7 +617,7 @@ class postref_handler(object):
         )
         ry = spot_radius
         rz = spot_radius
-        re = 0.002
+        re = iparams.gamma_e
         rotx = 0
         roty = 0
         partiality_init, delta_xy_init, rs_init = calc_partiality_anisotropy_set(
