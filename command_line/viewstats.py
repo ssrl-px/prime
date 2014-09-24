@@ -54,6 +54,10 @@ beta_std = np.array([0.0] * 10)
 gamma_std = np.array([0.0] * 10)
 
 i_row = 0
+fpr_init = 0
+fpr_std_init = 0
+fxy_init = 0
+fxy_std_init = 0
 for line in data_a:
     if line.find(search_word) > 0:
         data_col = data_a[line_no_now - 2].split()
@@ -61,12 +65,22 @@ for line in data_a:
         cc12_all[i_row] = float(data_col[8])
         cciso_all[i_row] = float(data_col[10])
 
+        if i_row == 1:
+            # collect post-refinement target before
+            data_col = data_a[line_no_now + 8].split()
+            fpr_init = float(data_col[2])
+            fpr_std_init = float(data_col[len(data_col) - 1].strip("(").strip(")"))
+
+            data_col = data_a[line_no_now + 9].split()
+            fxy_init = float(data_col[3])
+            fxy_std_init = float(data_col[len(data_col) - 1].strip("(").strip(")"))
+
         data_col = data_a[line_no_now + 11].split()
         fpr_all[i_row] = float(data_col[2])
         fpr_std[i_row] = float(data_col[len(data_col) - 1].strip("(").strip(")"))
 
         data_col = data_a[line_no_now + 12].split()
-        fxy_all[i_row] = float(data_col[2])
+        fxy_all[i_row] = float(data_col[3])
         fxy_std[i_row] = float(data_col[len(data_col) - 1].strip("(").strip(")"))
 
         data_col = data_a[line_no_now + 13].split()
@@ -124,6 +138,12 @@ for line in data_a:
         i_row += 1
 
     line_no_now += 1
+
+# reset fpr and fxy at 0th cycle
+fpr_all[0] = fpr_init
+fpr_std[0] = fpr_std_init
+fxy_all[0] = fxy_init
+fxy_std[0] = fxy_std_init
 
 n_cycle = 0
 for (
@@ -216,6 +236,8 @@ c_series = []
 alpha_series = []
 gamma_series = []
 beta_series = []
+fpr_series = []
+fxy_series = []
 for i in range(i_row):
     if G_std[i] == 0:
         narr = np.zeros(n_data)
@@ -295,6 +317,19 @@ for i in range(i_row):
         narr = np.random.normal(gamma_all[i], gamma_std[i], n_data)
     gamma_series.append(narr)
 
+    if fpr_std[i] == 0:
+        narr = np.zeros(n_data)
+    else:
+        narr = np.random.normal(fpr_all[i], fpr_std[i], n_data)
+    fpr_series.append(narr)
+
+    if fxy_std[i] == 0:
+        narr = np.zeros(n_data)
+    else:
+        narr = np.random.normal(fxy_all[i], fxy_std[i], n_data)
+    fxy_series.append(narr)
+
+
 x_range = range(1, i_row + 1)
 x_label = ["Start"]
 for i in range(1, i_row):
@@ -302,45 +337,55 @@ for i in range(1, i_row):
 
 font_plot = {"family": "Helvetica", "weight": "normal", "size": 12}
 # begin plotting
-ax = plt.subplot(421, title="Linear scale factor (G)")
+ax = plt.subplot(331, title="Fpr")
+plt.boxplot(fpr_series)
+plt.xticks(x_range, x_label)
+ax.title.set_fontweight("bold")
+ax.title.set_fontsize(12)
+
+ax = plt.subplot(332, title="Fxy")
+plt.boxplot(fxy_series)
+plt.xticks(x_range, x_label)
+ax.title.set_fontweight("bold")
+ax.title.set_fontsize(12)
+
+ax = plt.subplot(333, title="Linear scale factor (G)")
 plt.boxplot(G_series)
 plt.xticks(x_range, x_label)
 ax.title.set_fontweight("bold")
 ax.title.set_fontsize(12)
 
-ax = plt.subplot(423, title="B-factor")
+ax = plt.subplot(334, title="B-factor")
 plt.boxplot(B_series)
 plt.xticks(x_range, x_label)
 ax.title.set_fontweight("bold")
 ax.title.set_fontsize(12)
 
-ax = plt.subplot(424, title=r"$\Delta$ rotation on x-axis")
-ax.set_ylabel(r"$Angle (\degree)$")
+ax = plt.subplot(335, title=r"$\Delta$ rotation on x-axis ($\degree$)")
 plt.boxplot(rotx_series)
 plt.xticks(x_range, x_label)
 ax.title.set_fontweight("bold")
 ax.title.set_fontsize(12)
 
-ax = plt.subplot(425, title=r"$\Delta$ rotation on y-axis")
-ax.set_ylabel(r"$Angle (\degree)$")
+ax = plt.subplot(336, title=r"$\Delta$ rotation on y-axis ($\degree$)")
 plt.boxplot(roty_series)
 plt.xticks(x_range, x_label)
 ax.title.set_fontweight("bold")
 ax.title.set_fontsize(12)
 
-ax = plt.subplot(426, title=r"$\gamma_y$")
+ax = plt.subplot(337, title=r"$\gamma_y$")
 plt.boxplot(ry_series)
 plt.xticks(x_range, x_label)
 ax.title.set_fontweight("bold")
 ax.title.set_fontsize(14)
 
-ax = plt.subplot(427, title=r"$\gamma_x$")
+ax = plt.subplot(338, title=r"$\gamma_x$")
 plt.boxplot(rx_series)
 plt.xticks(x_range, x_label)
 ax.title.set_fontweight("bold")
 ax.title.set_fontsize(14)
 
-ax = plt.subplot(428, title=r"$\gamma_e$")
+ax = plt.subplot(339, title=r"$\gamma_e$")
 plt.boxplot(re_series)
 plt.xticks(x_range, x_label)
 ax.title.set_fontweight("bold")
@@ -348,43 +393,37 @@ ax.title.set_fontsize(14)
 
 plt.show()
 
-ax = plt.subplot(231, title="a")
-ax.set_ylabel(r"$\AA$", rotation=0)
+ax = plt.subplot(231, title=r"a ($\AA$)")
 plt.boxplot(a_series)
 plt.xticks(x_range, x_label)
 ax.title.set_fontweight("bold")
 ax.title.set_fontsize(12)
 
-ax = plt.subplot(232, title="b")
-ax.set_ylabel(r"$\AA$", rotation=0)
+ax = plt.subplot(232, title=r"b ($\AA$)")
 plt.boxplot(b_series)
 plt.xticks(x_range, x_label)
 ax.title.set_fontweight("bold")
 ax.title.set_fontsize(12)
 
-ax = plt.subplot(233, title="c")
-ax.set_ylabel(r"$\AA$", rotation=0)
+ax = plt.subplot(233, title=r"c ($\AA$)")
 plt.boxplot(c_series)
 plt.xticks(x_range, x_label)
 ax.title.set_fontweight("bold")
 ax.title.set_fontsize(12)
 
-ax = plt.subplot(234, title="alpha")
-ax.set_ylabel(r"$Angle (\degree)$")
+ax = plt.subplot(234, title=r"alpha ($\degree$)")
 plt.boxplot(alpha_series)
 plt.xticks(x_range, x_label)
 ax.title.set_fontweight("bold")
 ax.title.set_fontsize(12)
 
-ax = plt.subplot(235, title="beta")
-ax.set_ylabel(r"$Angle (\degree)$")
+ax = plt.subplot(235, title=r"beta ($\degree$)")
 plt.boxplot(beta_series)
 plt.xticks(x_range, x_label)
 ax.title.set_fontweight("bold")
 ax.title.set_fontsize(12)
 
-ax = plt.subplot(236, title="gamma")
-ax.set_ylabel(r"$Angle (\degree)$")
+ax = plt.subplot(236, title=r"gamma ($\degree$)")
 plt.boxplot(gamma_series)
 plt.xticks(x_range, x_label)
 ax.title.set_fontweight("bold")
