@@ -201,6 +201,7 @@ def func(params, *args):
     partiality_model = args[11]
     r0 = args[12]
     b0 = args[13]
+    miller_array_iso = args[14]
     I_o = miller_array_o.data().as_numpy_array()
     sigI_o = miller_array_o.sigmas().as_numpy_array()
     miller_indices_original = miller_array_o.indices()
@@ -266,8 +267,25 @@ def func(params, *args):
     else:
         error = (I_r - I_o_full) / sigI_o
 
-    CC = np.corrcoef(I_r, I_o_full)[0, 1]
-    # print refine_mode, 'G=%.4g B=%.4g rotx=%.4g roty=%.4g ry=%.4g rz=%.4g re=%.4g a=%.4g b=%.4g c=%.4g alp=%.4g beta=%.4g gam=%.4g fpr=%.4g fxy=%.4g CC=%5.2f'%(G, B, rotx*180/math.pi, roty*180/math.pi, ry, rz, re, a, b, c, alpha, beta, gamma, np.sum(((I_r - I_o_full)/sigI_o)**2), np.sum(delta_xy_flex**2), CC*100), detector_distance_mm
+    CC_ref = np.corrcoef(I_r, I_o_full)[0, 1]
+    CC_iso = 0
+    if miller_array_iso is not None:
+        miller_array_o_asu = miller_array_o.map_to_asu()
+
+        from cctbx import miller
+
+        matches = miller.match_multi_indices(
+            miller_indices_unique=miller_array_iso.indices(),
+            miller_indices=miller_array_o_asu.indices(),
+        )
+        I_iso_match = flex.double(
+            [miller_array_iso.data()[pair[0]] for pair in matches.pairs()]
+        )
+        I_o_match = flex.double([I_o_full[pair[1]] for pair in matches.pairs()])
+
+        CC_iso = np.corrcoef(I_iso_match, I_o_match)[0, 1]
+
+    # print refine_mode, 'G=%.4g B=%.4g rotx=%.4g roty=%.4g ry=%.4g rz=%.4g re=%.4g a=%.4g b=%.4g c=%.4g alp=%.4g beta=%.4g gam=%.4g fpr=%.4g fxy=%.4g CCref=%5.2f CCiso=%5.2f'%(G, B, rotx*180/math.pi, roty*180/math.pi, ry, rz, re, a, b, c, alpha, beta, gamma, np.sum(((I_r - I_o_full)/sigI_o)**2), np.sum(delta_xy_flex**2), CC_ref*100, CC_iso*100), detector_distance_mm
     return error
 
 
@@ -421,6 +439,7 @@ class leastsqr_handler(object):
                 iparams.partiality_model,
                 spot_radius,
                 b0,
+                None,
             ),
             full_output=True,
             maxfev=100,
@@ -539,6 +558,31 @@ class leastsqr_handler(object):
             if iparams.postref.unit_cell.flag_on:
                 refine_steps.append("unit_cell")
                 end_step = 3
+
+        # get miller array iso, if given.
+        miller_array_iso = None
+        if iparams.hklisoin is not None:
+            from iotbx import reflection_file_reader
+
+            reflection_file_iso = reflection_file_reader.any_reflection_file(
+                iparams.hklisoin
+            )
+            miller_arrays_iso = reflection_file_iso.as_miller_arrays()
+            is_found_iso_as_intensity_array = False
+            is_found_iso_as_amplitude_array = False
+            for miller_array in miller_arrays_iso:
+                if miller_array.is_xray_intensity_array():
+                    miller_array_iso = miller_array.deep_copy()
+                    is_found_iso_as_intensity_array = True
+                    break
+                elif miller_array.is_xray_amplitude_array():
+                    is_found_iso_as_amplitude_array = True
+                    miller_array_converted_to_intensity = (
+                        miller_array.as_intensity_array()
+                    )
+            if is_found_iso_as_intensity_array == False:
+                if is_found_iso_as_amplitude_array:
+                    miller_array_iso = miller_array_converted_to_intensity.deep_copy()
 
         # prepare data
         pr_d_min = iparams.postref.allparams.d_min
@@ -664,6 +708,7 @@ class leastsqr_handler(object):
             iparams.partiality_model,
             spot_radius,
             B,
+            miller_array_iso,
         )
         init_residual_xy_err = np.sum(uc_params_err ** 2)
 
@@ -687,6 +732,7 @@ class leastsqr_handler(object):
             iparams.partiality_model,
             spot_radius,
             B,
+            miller_array_iso,
         )
         init_residual_err = np.sum(all_params_err ** 2)
 
@@ -736,6 +782,7 @@ class leastsqr_handler(object):
                         iparams.partiality_model,
                         spot_radius,
                         B,
+                        miller_array_iso,
                     ),
                     full_output=True,
                     maxfev=100,
@@ -779,6 +826,7 @@ class leastsqr_handler(object):
                     iparams.partiality_model,
                     spot_radius,
                     B,
+                    miller_array_iso,
                 )
                 current_residual_xy_err = np.sum(uc_params_err ** 2)
 
@@ -864,6 +912,7 @@ class leastsqr_handler(object):
                         iparams.partiality_model,
                         spot_radius,
                         B,
+                        miller_array_iso,
                     )
 
                     if (
@@ -1068,32 +1117,7 @@ class leastsqr_handler(object):
         CC_iso_init = 0
         CC_iso_final = 0
         if iparams.hklisoin is not None:
-            flag_hklisoin_found = True
-            from iotbx import reflection_file_reader
-
-            reflection_file_iso = reflection_file_reader.any_reflection_file(
-                iparams.hklisoin
-            )
-            miller_arrays_iso = reflection_file_iso.as_miller_arrays()
-            is_found_iso_as_intensity_array = False
-            is_found_iso_as_amplitude_array = False
-            for miller_array in miller_arrays_iso:
-                if miller_array.is_xray_intensity_array():
-                    miller_array_iso = miller_array.deep_copy()
-                    is_found_iso_as_intensity_array = True
-                    break
-                elif miller_array.is_xray_amplitude_array():
-                    is_found_iso_as_amplitude_array = True
-                    miller_array_converted_to_intensity = (
-                        miller_array.as_intensity_array()
-                    )
-            if is_found_iso_as_intensity_array == False:
-                if is_found_iso_as_amplitude_array:
-                    miller_array_iso = miller_array_converted_to_intensity.deep_copy()
-                else:
-                    flag_hklisoin_found = False
-
-            if flag_hklisoin_found:
+            if miller_array_iso is not None:
                 from cctbx import miller
 
                 matches = miller.match_multi_indices(
