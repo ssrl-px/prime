@@ -723,6 +723,8 @@ class intensities_scaler(object):
         sum_r_meas_btm = 0
         sum_refl_obs = 0
         sum_refl_complete = 0
+
+        n_refl_obs_total = 0
         for i in range(1, iparams.n_bins + 1):
             i_binner = binner_template_asu_indices == i
             miller_indices_bin = miller_array_template_asu.indices().select(i_binner)
@@ -753,7 +755,6 @@ class intensities_scaler(object):
 
             avg_I_by_bin.append(np.mean(I_bin))
             one_dsqr_by_bin.append(1 / binner_template_asu.bin_d_range(i)[1] ** 2)
-            multiplicity_all = flex.double()
             if len(I_bin) == 0:
                 mean_i_over_sigi_bin = 0
                 multiplicity_bin = 0
@@ -780,6 +781,7 @@ class intensities_scaler(object):
                     sum_r_meas_w_btm += r_meas_w_btm
                     sum_r_meas_top += r_meas_top
                     sum_r_meas_btm += r_meas_btm
+                    n_refl_obs_total += mul
 
                 multiplicity_bin = sum_mul_bin / len(I_bin)
                 if sum_r_meas_w_btm_bin > 0:
@@ -811,7 +813,7 @@ class intensities_scaler(object):
             completeness = len(miller_indices_obs_bin) / len(miller_indices_bin)
             sum_refl_obs += len(miller_indices_obs_bin)
             sum_refl_complete += len(miller_indices_bin)
-            multiplicity_all.append(multiplicity_bin)
+
             # calculate CCiso
             cc_iso_bin = 0
             r_iso_bin = 0
@@ -952,7 +954,7 @@ class intensities_scaler(object):
                 (sum_refl_obs / sum_refl_complete) * 100,
                 sum_refl_obs,
                 sum_refl_complete,
-                np.mean(multiplicity_all),
+                n_refl_obs_total / sum_refl_obs,
                 r_meas * 100,
                 r_meas_w * 100,
                 cc12 * 100,
