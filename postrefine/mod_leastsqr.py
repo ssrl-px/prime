@@ -41,6 +41,9 @@ def calc_full_refl(
     I_o_full_set = flex.double(
         ((G * np.exp(-2 * B * sin_theta_over_lambda_sq_set) * I_o_p_set) / p_set)
     )
+
+    if flag_volume_correction:
+        I_o_full_set = I_o_full_set * (4 / 3) * rs_set
     return I_o_full_set
 
 

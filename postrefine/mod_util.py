@@ -203,8 +203,8 @@ class intensities_scaler(object):
             [
                 np.mean(G_all),
                 np.mean(B_all),
-                np.mean(ry_all),
-                np.mean(rz_all),
+                np.mean(flex.abs(ry_all)),
+                np.mean(flex.abs(rz_all)),
                 np.mean(re_all),
                 np.mean(r0_all),
                 np.mean(flex.abs(rotx_all)),
@@ -215,8 +215,8 @@ class intensities_scaler(object):
             [
                 np.std(G_all),
                 np.std(B_all),
-                np.std(ry_all),
-                np.std(rz_all),
+                np.std(flex.abs(ry_all)),
+                np.std(flex.abs(rz_all)),
                 np.std(re_all),
                 np.std(r0_all),
                 np.std(flex.abs(rotx_all)),
