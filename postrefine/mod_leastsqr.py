@@ -38,9 +38,12 @@ def calc_full_refl(
     rs_set,
     flag_volume_correction=False,
 ):
-    I_o_full_set = flex.double(
+    I_o_full_set = (
         ((G * np.exp(-2 * B * sin_theta_over_lambda_sq_set) * I_o_p_set) / p_set)
+        * (4 / 3)
+        * (rs_set)
     )
+    I_o_full_set = flex.double(I_o_full_set)
 
     return I_o_full_set
 
@@ -486,18 +489,8 @@ class leastsqr_handler(object):
             rs_init,
         )
 
-        SE_of_the_estimate = standard_error_of_the_estimate(
-            I_r_flex / observations_original.sigmas(),
-            I_o_fin / observations_original.sigmas(),
-            2,
-        )
-        R_sq = (
-            coefficient_of_determination(
-                I_r_flex / observations_original.sigmas(),
-                I_o_fin / observations_original.sigmas(),
-            )
-            * 100
-        )
+        SE_of_the_estimate = standard_error_of_the_estimate(I_r_flex, I_o_fin, 2)
+        R_sq = coefficient_of_determination(I_r_flex, I_o_fin) * 100
 
         CC_init = np.corrcoef(I_r_flex, I_o_init)[0, 1]
         CC_final = np.corrcoef(I_r_flex, I_o_fin)[0, 1]
@@ -1060,18 +1053,8 @@ class leastsqr_handler(object):
             partiality_fin,
             rs_fin,
         )
-        SE_of_the_estimate = standard_error_of_the_estimate(
-            I_r_flex / observations_original.sigmas(),
-            I_o_fin / observations_original.sigmas(),
-            13,
-        )
-        R_sq = (
-            coefficient_of_determination(
-                I_r_flex / observations_original.sigmas(),
-                I_o_fin / observations_original.sigmas(),
-            )
-            * 100
-        )
+        SE_of_the_estimate = standard_error_of_the_estimate(I_r_flex, I_o_fin, 13)
+        R_sq = coefficient_of_determination(I_r_flex, I_o_fin) * 100
 
         CC_init = np.corrcoef(I_r_flex, I_o_init)[0, 1]
         CC_final = np.corrcoef(I_r_flex, I_o_fin)[0, 1]
