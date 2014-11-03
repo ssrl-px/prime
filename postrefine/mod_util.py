@@ -23,6 +23,7 @@ class intensities_scaler(object):
         """Constructor."""
         self.CONST_SE_MIN_WEIGHT = 0.17
         self.CONST_SE_MAX_WEIGHT = 1.0
+        self.CONST_SIG_I_FACTOR = 3.0
 
     def calc_avg_I(
         self,
@@ -158,13 +159,12 @@ class intensities_scaler(object):
         if avg_mode == "average":
             SE_norm = flex.double([1] * len(I_full))
 
-        # calculate sigI_full from weighting term
-        sigI_full = flex.sqrt(I_full) / SE_norm
-
         I_avg = flex.sum(SE_norm * I_full) / flex.sum(SE_norm)
-        sigI_avg = np.mean(sigI_full)
-        if math.isnan(sigI_avg) == False or sigI_avg <= 0:
-            sigI_avg = math.sqrt(I_avg)
+        # test calculation of sigI
+        if len(I_full) > 2:
+            sigI_avg = np.std(I_full) / self.CONST_SIG_I_FACTOR
+        else:
+            sigI_avg = np.sqrt(I_avg) * self.CONST_SIG_I_FACTOR
 
         # Rmeas, Rmeas_w, multiplicity
         multiplicity = len(I_full)
@@ -214,7 +214,7 @@ class intensities_scaler(object):
         # calculate mosaic spread
         mosaic_radian_set = 2 * (rs_set) * (wavelength_set)
 
-        txt_obs_out += "    I_o        sigI_o    G      B     Eoc      rs    lambda rocking(deg) W      I_full     sigI_full\n"
+        txt_obs_out += "    I_o        sigI_o    G      B     Eoc      rs    lambda rocking(deg) W      I_full     \n"
         for (
             i_o,
             sigi_o,
@@ -226,7 +226,6 @@ class intensities_scaler(object):
             mosaic_radian,
             se_norm,
             i_full,
-            sigi_full,
         ) in zip(
             I,
             sigI,
@@ -238,10 +237,9 @@ class intensities_scaler(object):
             mosaic_radian_set,
             SE_norm,
             I_full,
-            sigI_full,
         ):
             txt_obs_out += (
-                "%10.2f %10.2f %6.2f %6.2f %6.2f %8.5f %8.5f %8.5f %6.2f %10.2f %10.2f\n"
+                "%10.2f %10.2f %6.2f %6.2f %6.2f %8.5f %8.5f %8.5f %6.2f %10.2f\n"
                 % (
                     i_o,
                     sigi_o,
@@ -253,7 +251,6 @@ class intensities_scaler(object):
                     mosaic_radian * 180 / math.pi,
                     se_norm,
                     i_full,
-                    sigi_full,
                 )
             )
         txt_obs_out += "Merged I, sigI: %6.2f, %6.2f\n" % (I_avg, sigI_avg)
