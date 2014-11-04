@@ -2,7 +2,8 @@ from __future__ import division
 
 
 def refine_many(frame_lst, input_file):
-    """Run postrefienement.
+    """Perform a full run on Prime, using the parameters specified in the
+    `input_file`. Merging of fully-corrected intensities is not performed.
 
     :param frame_lst: list of dictionairies describing integration results.
     :param input_file: Prime .inp file. See XXXXXX for full description.
@@ -15,6 +16,9 @@ def refine_many(frame_lst, input_file):
           - `xbeam`: x-location of beam centre
           - `ybeam`: y-location of beam centre
           - `wavelength`: the wavelength in Angstroms
-    :return: a list of tuples of the form: (G, B, rotx, roty, ry, rz, re, a, b, c, alpha, beta, gamma), describing the refined parameters of the images described by the list of dictionairies.
+    :return: A list of `miller_array` objects, containing the partiality-corrected (full-intensity equivalent) intensities, and associated errors for each of the images specified in the input dictionairy.
+
+    .. warning::
+       This will modify the `orientation` object to reflect the updated parameters. Deep copy first if you do not want this!
     """
     pass
