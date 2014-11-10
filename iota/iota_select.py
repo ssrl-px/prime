@@ -105,7 +105,7 @@ def best_file_selection(gs_params, output_dir, log_dir):
         else:
             acceptable_pickles = total_tmp_pickles
 
-            # Selection and copying of pickles, output of stats to log file
+        # Selection and copying of pickles, output of stats to log file
         if len(acceptable_pickles) == 0:
             ps_logger.info(
                 "Discarded all {0} integrated pickles in {1}:\n".format(

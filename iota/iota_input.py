@@ -13,19 +13,19 @@ description = Integration optimization and transfer app (IOTA) input file
   .multiple = False
   .optional = True
 input = None
-	.type = path
-	.multiple = False
-	.help = Path to folder with raw data in pickle format. Can be a tree w/ subfolders
-	.optional = False
+        .type = path
+        .multiple = False
+        .help = Path to folder with raw data in pickle format. Can be a tree w/ subfolders
+        .optional = False
 output = iota_output
-	.type = str
-	.help = Base name for output folder
-	.optional = False
+        .type = str
+        .help = Base name for output folder
+        .optional = False
 target = target.phil
-	.type = str
-	.multiple = False
-	.help = Target (.phil) file with integration parameters
-	.optional = False
+        .type = str
+        .multiple = False
+        .help = Target (.phil) file with integration parameters
+        .optional = False
 flag_random = False
   .type = bool
   .help = Activate grid search / selection of random sample & analysis of parameters
@@ -46,7 +46,7 @@ grid_search
     .help = Minimum spot height.
   h_max = 10
     .type = int
-    .help = Maximum spot height.  
+    .help = Maximum spot height.
 }
 flag_prefilter = True
   .type = bool
@@ -64,7 +64,7 @@ target_uc_tolerance = 0.05
   .type = float
   .help = Maximum allowed unit cell deviation from target
 select_by = strong
-	.type = str
+        .type = str
   .help = Pickle selection method
 min_sigma = 5.0
   .type = float
@@ -126,7 +126,7 @@ def make_lists(input_dir, output_dir):
                 pickle_file = root + "/" + filename
                 input_list.append(pickle_file)
 
-                # make lists of input and output directories and files
+    # make lists of input and output directories and files
     for input_entry in input_list:
         path = os.path.dirname(input_entry)
 
@@ -174,7 +174,7 @@ def make_dirs(output_dir_list, log_dir):
         else:
             os.makedirs(output_dir)
 
-            # make output directory for selected pickles
+        # make output directory for selected pickles
         best_output_dir = output_dir + "/selected"
         if os.path.exists(best_output_dir):
             shutil.rmtree(best_output_dir)
@@ -182,7 +182,7 @@ def make_dirs(output_dir_list, log_dir):
         else:
             os.makedirs(best_output_dir)
 
-            # make log folder for cxi.index logs (one per integration attempt)
+        # make log folder for cxi.index logs (one per integration attempt)
         index_log_dir = output_dir + "/logs"
         if os.path.exists(index_log_dir):
             shutil.rmtree(index_log_dir)
@@ -190,7 +190,7 @@ def make_dirs(output_dir_list, log_dir):
         else:
             os.makedirs(index_log_dir)
 
-            # make log folder (under main output folder regardless of tree structure)
+    # make log folder (under main output folder regardless of tree structure)
     if os.path.exists(log_dir):
         shutil.rmtree(log_dir)
         os.makedirs(log_dir)
