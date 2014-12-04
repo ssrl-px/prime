@@ -18,26 +18,28 @@ FORMAT = "%(levelname)s %(module)s.%(funcName)s: %(message)s"
 logging.basicConfig(level=logging.WARNING, format=FORMAT)
 
 
-def determine_mean_I_mproc(frame_no, frame_files, iparams):
+def determine_mean_I_mproc(frame_no, frame_files, iparams, avg_mode):
     from prime.postrefine import postref_handler
 
     prh = postref_handler()
-    mean_I = prh.calc_mean_intensity(frame_files[frame_no], iparams)
+    mean_I = prh.calc_mean_intensity(frame_files[frame_no], iparams, avg_mode)
     return mean_I
 
 
-def scale_frame_by_mean_I_mproc(frame_no, frame_files, iparams, mean_of_mean_I):
+def scale_frame_by_mean_I_mproc(
+    frame_no, frame_files, iparams, mean_of_mean_I, avg_mode
+):
     from prime.postrefine import postref_handler
 
     prh = postref_handler()
     pres = prh.scale_frame_by_mean_I(
-        frame_no, frame_files[frame_no], iparams, mean_of_mean_I
+        frame_no, frame_files[frame_no], iparams, mean_of_mean_I, avg_mode
     )
     return pres
 
 
 def postrefine_by_frame_mproc(
-    frame_no, frame_files, iparams, miller_array_ref, pres_results
+    frame_no, frame_files, iparams, miller_array_ref, pres_results, avg_mode
 ):
     from prime.postrefine import postref_handler
 
@@ -47,7 +49,7 @@ def postrefine_by_frame_mproc(
     else:
         pres_in = pres_results[frame_no]
     pres = prh.postrefine_by_frame(
-        frame_no, frame_files[frame_no], iparams, miller_array_ref, pres_in
+        frame_no, frame_files[frame_no], iparams, miller_array_ref, pres_in, avg_mode
     )
     return pres
 
@@ -112,10 +114,18 @@ def calc_average_I_mproc(
 
 def read_pickles(data):
     frame_files = []
-    for pickle_dir in data:
-        for file_name in os.listdir(pickle_dir):
-            if file_name.endswith(".pickle"):
-                frame_files.append(pickle_dir + "/" + file_name)
+    for p in data:
+        if os.path.isdir(p) == False:
+            # check if list-of-pickle text file is given
+            pickle_list_file = open(p, "r")
+            pickle_list = pickle_list_file.read().split("\n")
+            for pickle_filename in pickle_list:
+                if os.path.isfile(pickle_filename):
+                    frame_files.append(pickle_filename)
+        else:
+            for pickle_filename in os.listdir(p):
+                if pickle_filename.endswith(".pickle"):
+                    frame_files.append(p + "/" + pickle_filename)
 
     # check if pickle_dir is given in input file instead of from cmd arguments.
     if len(frame_files) == 0:
@@ -150,10 +160,11 @@ if __name__ == "__main__":
     print "Frame#  Res (A)  Nrefl  Nrefl_used Sum_I           Mean_I       Median(I)    G     B                   Unit cell                File name"
     txt_merge_mean = ""
     miller_array_ref = None
+    avg_mode = "average"
     # Always generate the mean-intensity scaled set.
     # Calculate <I> for each frame
     def determine_mean_I_mproc_wrapper(arg):
-        return determine_mean_I_mproc(arg, frame_files, iparams)
+        return determine_mean_I_mproc(arg, frame_files, iparams, avg_mode)
 
     determine_mean_I_result = pool_map(
         args=frames, func=determine_mean_I_mproc_wrapper, processes=iparams.n_processors
@@ -170,7 +181,9 @@ if __name__ == "__main__":
 
     # use the calculate <mean_I> to scale each frame
     def scale_frame_by_mean_I_mproc_wrapper(arg):
-        return scale_frame_by_mean_I_mproc(arg, frame_files, iparams, mean_of_mean_I)
+        return scale_frame_by_mean_I_mproc(
+            arg, frame_files, iparams, mean_of_mean_I, avg_mode
+        )
 
     scale_frame_by_mean_I_result = pool_map(
         args=frames,
@@ -186,7 +199,6 @@ if __name__ == "__main__":
                 observations_merge_mean_set.append(pres)
 
     if len(observations_merge_mean_set) > 0:
-        avg_mode = "average"
         from prime.postrefine import prepare_output
 
         prep_output = prepare_output(observations_merge_mean_set, iparams, avg_mode)
@@ -314,19 +326,20 @@ if __name__ == "__main__":
     postrefine_by_frame_result = None
     postrefine_by_frame_pres_list = None
     for i in range(n_iters):
+        miller_array_ref = miller_array_ref.generate_bijvoet_mates()
         if i == (n_iters - 1):
             avg_mode = "final"
         else:
             avg_mode = "weighted"
 
-        if i > 1:
+        if i > 0:
             iparams.b_refine_d_min = 0.5
 
         _txt_merge_postref = "Start post-refinement cycle " + str(i + 1) + "\n"
         _txt_merge_postref += "Average mode: " + avg_mode + "\n"
         txt_merge_postref += _txt_merge_postref
         print _txt_merge_postref
-        print "Frame# Res.(A) Nrefl Nreflused  Rini  Rfin  Rxyini  Rxyfin CCini CCfin CCisoini CCisofin             Unit cell                   File name"
+        print "Frame# Res.(A) Nrefl Nreflused    Rini     Rfin  Rxyini  Rxyfin CCini CCfin CCisoini CCisofin             Unit cell                   File name"
 
         def postrefine_by_frame_mproc_wrapper(arg):
             return postrefine_by_frame_mproc(
@@ -335,6 +348,7 @@ if __name__ == "__main__":
                 iparams,
                 miller_array_ref,
                 postrefine_by_frame_pres_list,
+                avg_mode,
             )
 
         postrefine_by_frame_result = pool_map(

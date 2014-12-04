@@ -22,10 +22,17 @@ class postref_handler(object):
     def __init__(self):
         """Constructor."""
 
-    def organize_input(self, observations_pickle, iparams, pickle_filename=None):
+    def organize_input(
+        self, observations_pickle, iparams, avg_mode, pickle_filename=None
+    ):
 
         """Given the pickle file, extract and prepare observations object and
         the alpha angle (meridional to equatorial)."""
+        if avg_mode == "final":
+            target_anomalous_flag = iparams.target_anomalous_flag
+        else:
+            target_anomalous_flag = False
+
         observations = observations_pickle["observations"][0]
 
         detector_distance_mm = observations_pickle["distance"]
@@ -86,11 +93,11 @@ class postref_handler(object):
                 unit_cell=observations.unit_cell().parameters(),
                 space_group_symbol=iparams.target_space_group,
             ).build_miller_set(
-                anomalous_flag=iparams.target_anomalous_flag, d_min=iparams.merge.d_min
+                anomalous_flag=target_anomalous_flag, d_min=iparams.merge.d_min
             )
 
             observations = observations.customized_copy(
-                anomalous_flag=iparams.target_anomalous_flag,
+                anomalous_flag=target_anomalous_flag,
                 crystal_symmetry=miller_set.crystal_symmetry(),
             )
         except Exception:
@@ -253,7 +260,7 @@ class postref_handler(object):
             return observations_rev
 
     def postrefine_by_frame(
-        self, frame_no, pickle_filename, iparams, miller_array_ref, pres_in
+        self, frame_no, pickle_filename, iparams, miller_array_ref, pres_in, avg_mode
     ):
 
         # 1. Prepare data
@@ -263,7 +270,7 @@ class postref_handler(object):
         pickle_filepaths = pickle_filename.split("/")
 
         inputs, txt_organize_input = self.organize_input(
-            observations_pickle, iparams, pickle_filename=pickle_filename
+            observations_pickle, iparams, avg_mode, pickle_filename=pickle_filename
         )
         if inputs is not None:
             observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm = (
@@ -359,7 +366,7 @@ class postref_handler(object):
             refined_params
         )
         inputs, txt_organize_input = self.organize_input(
-            observations_pickle, iparams, pickle_filename=pickle_filename
+            observations_pickle, iparams, avg_mode, pickle_filename=pickle_filename
         )
         observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm = (
             inputs
@@ -439,7 +446,7 @@ class postref_handler(object):
         )
 
         txt_postref = (
-            "%6.0f %5.2f %6.0f %9.0f %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f %8.2f %6.2f %6.2f %6.2f %5.2f %5.2f %5.2f "
+            "%6.0f %5.2f %6.0f %9.0f %8.2f %8.2f %6.2f %6.2f %6.2f %6.2f %6.2f %8.2f %6.2f %6.2f %6.2f %5.2f %5.2f %5.2f "
             % (
                 pres.frame_no,
                 observations_non_polar.d_min(),
@@ -466,13 +473,13 @@ class postref_handler(object):
         print txt_postref
         return pres, txt_postref
 
-    def calc_mean_intensity(self, pickle_filename, iparams):
+    def calc_mean_intensity(self, pickle_filename, iparams, avg_mode):
         observations_pickle = pickle.load(open(pickle_filename, "rb"))
         wavelength = observations_pickle["wavelength"]
         pickle_filepaths = pickle_filename.split("/")
 
         inputs, txt_organize_input = self.organize_input(
-            observations_pickle, iparams, pickle_filename=pickle_filename
+            observations_pickle, iparams, avg_mode, pickle_filename=pickle_filename
         )
         if inputs is not None:
             observations_original, alpha_angle_obs, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm = (
@@ -527,14 +534,16 @@ class postref_handler(object):
 
         return mean_I, pickle_filepaths[len(pickle_filepaths) - 1]
 
-    def scale_frame_by_mean_I(self, frame_no, pickle_filename, iparams, mean_of_mean_I):
+    def scale_frame_by_mean_I(
+        self, frame_no, pickle_filename, iparams, mean_of_mean_I, avg_mode
+    ):
 
         observations_pickle = pickle.load(open(pickle_filename, "rb"))
 
         pickle_filepaths = pickle_filename.split("/")
 
         inputs, txt_organize_input = self.organize_input(
-            observations_pickle, iparams, pickle_filename=pickle_filename
+            observations_pickle, iparams, avg_mode, pickle_filename=pickle_filename
         )
         if inputs is not None:
             observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm = (
