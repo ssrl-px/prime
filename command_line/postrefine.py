@@ -145,7 +145,7 @@ if __name__ == "__main__":
     from prime.postrefine import read_input
 
     iparams, txt_out_input = read_input(sys.argv[:1])
-    iparams.n_min_frames = 100
+    iparams.n_min_frames = 1
     print txt_out_input
     txt_out_verbose = "Log verbose\n" + txt_out_input
 
