@@ -108,9 +108,9 @@ def calc_partiality_anisotropy_set(
         spot_pred_x_mm_set,
         spot_pred_y_mm_set,
     ):
-        # rs = math.sqrt((ry * math.cos(alpha_angle))**2 + (rz * math.sin(alpha_angle))**2) + \
-        #  (r0 + (abs(re)*math.tan(bragg_angle)))
-        rs = r0 + (abs(re) * math.tan(bragg_angle))
+        rs = math.sqrt(
+            (ry * math.cos(alpha_angle)) ** 2 + (rz * math.sin(alpha_angle)) ** 2
+        ) + (r0 + (abs(re) * math.tan(bragg_angle)))
         h = col(miller_index)
         x = A_star * h
         S = x + S0
