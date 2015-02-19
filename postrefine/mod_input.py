@@ -34,6 +34,12 @@ scale
 postref
   .help = Post-refinement parameters
 {
+  residual_threshold = 5
+    .type = float
+    .help = Percent increase in residual allowed during microcycle.
+  residual_threshold_xy = 5
+    .type = float
+    .help = Percent increase in residual (xy) allowed during microcycle.
   scale
     .help = Scale factors
   {
@@ -164,6 +170,10 @@ target_anomalous_flag = False
   .type = bool
   .help = Target anomalous flag (False = Not anomalous data)
   .optional = False
+target_crystal_system = None
+  .type = str
+  .help = Target crystal system
+  .optional = True
 indexing_ambiguity
   .help = "Parameters used in resolving indexing ambiguity"
 {
