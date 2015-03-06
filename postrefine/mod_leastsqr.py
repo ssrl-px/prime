@@ -89,6 +89,7 @@ def calc_partiality_anisotropy_set(
     spot_pred_y_mm_set,
     detector_distance_mm,
     partiality_model,
+    flag_beam_divergence,
 ):
     # use III.4 in Winkler et al 1979 (A35; P901) for set of miller indices
     O = sqr(my_uc.orthogonalization_matrix()).transpose()
@@ -108,9 +109,12 @@ def calc_partiality_anisotropy_set(
         spot_pred_x_mm_set,
         spot_pred_y_mm_set,
     ):
-        rs = math.sqrt(
-            (ry * math.cos(alpha_angle)) ** 2 + (rz * math.sin(alpha_angle)) ** 2
-        ) + (r0 + (abs(re) * math.tan(bragg_angle)))
+        if flag_beam_divergence:
+            rs = math.sqrt(
+                (ry * math.cos(alpha_angle)) ** 2 + (rz * math.sin(alpha_angle)) ** 2
+            ) + (r0 + (abs(re) * math.tan(bragg_angle)))
+        else:
+            rs = r0 + (abs(re) * math.tan(bragg_angle))
         h = col(miller_index)
         x = A_star * h
         S = x + S0
@@ -193,18 +197,20 @@ def func(params, *args):
     miller_array_o = args[1]
     wavelength = args[2]
     alpha_angle_set = args[3]
-    b_refine_d_min = args[4]
-    crystal_init_orientation = args[5]
-    spot_pred_x_mm_set = args[6]
-    spot_pred_y_mm_set = args[7]
-    detector_distance_mm = args[8]
-    refine_mode = args[9]
-    const_params = args[10]
-    partiality_model = args[11]
-    b0 = args[12]
-    r0 = args[13]
-    miller_array_iso = args[14]
-    flag_volume_correction = args[15]
+    crystal_init_orientation = args[4]
+    spot_pred_x_mm_set = args[5]
+    spot_pred_y_mm_set = args[6]
+    detector_distance_mm = args[7]
+    refine_mode = args[8]
+    const_params = args[9]
+    b0 = args[10]
+    miller_array_iso = args[11]
+    iparams = args[12]
+
+    partiality_model = iparams.partiality_model
+    flag_volume_correction = iparams.flag_volume_correction
+    flag_beam_divergence = iparams.flag_beam_divergence
+    b_refine_d_min = iparams.b_refine_d_min
     I_o = miller_array_o.data().as_numpy_array()
     sigI_o = miller_array_o.sigmas().as_numpy_array()
     miller_indices_original = miller_array_o.indices()
@@ -219,19 +225,19 @@ def func(params, *args):
 
     if refine_mode == "scale_factor":
         G, B = params
-        rotx, roty, ry, rz, re, a, b, c, alpha, beta, gamma = const_params
+        rotx, roty, ry, rz, r0, re, a, b, c, alpha, beta, gamma = const_params
     elif refine_mode == "crystal_orientation":
         rotx, roty = params
-        G, B, ry, rz, re, a, b, c, alpha, beta, gamma = const_params
+        G, B, ry, rz, r0, re, a, b, c, alpha, beta, gamma = const_params
     elif refine_mode == "reflecting_range":
-        ry, rz, re = params
+        ry, rz, r0, re = params
         G, B, rotx, roty, a, b, c, alpha, beta, gamma = const_params
     elif refine_mode == "unit_cell":
         a, b, c, alpha, beta, gamma = prep_output(params, cs)
-        G, B, rotx, roty, ry, rz, re = const_params
+        G, B, rotx, roty, ry, rz, r0, re = const_params
     elif refine_mode == "allparams":
-        a, b, c, alpha, beta, gamma = prep_output(params[7:], cs)
-        G, B, rotx, roty, ry, rz, re = params[0:7]
+        a, b, c, alpha, beta, gamma = prep_output(params[8:], cs)
+        G, B, rotx, roty, ry, rz, r0, re = params[0:8]
 
     try:
         uc = unit_cell((a, b, c, alpha, beta, gamma))
@@ -255,6 +261,7 @@ def func(params, *args):
         spot_pred_y_mm_set,
         detector_distance_mm,
         partiality_model,
+        flag_beam_divergence,
     )
     p_calc_set = p_calc_flex.as_numpy_array()
 
@@ -304,7 +311,7 @@ def func(params, *args):
 
         CC_iso = np.corrcoef(I_iso_match, I_o_match)[0, 1]
 
-    # print refine_mode, 'G=%.4g B=%.4g rotx=%.4g roty=%.4g ry=%.4g rz=%.4g re=%.4g a=%.4g b=%.4g c=%.4g alp=%.4g beta=%.4g gam=%.4g fpr=%.4g fxy=%.4g CCref=%5.2f CCiso=%5.2f dd_mm=%6.2f n_refl=%5.0f n_iso=%5.0f'%(G, B, rotx*180/math.pi, roty*180/math.pi, ry, rz, re, a, b, c, alpha, beta, gamma, np.sum(((I_r - I_o_full)/sigI_o)**2), np.sum(delta_xy_flex**2), CC_ref*100, CC_iso*100, detector_distance_mm, len(I_o_full), len(I_o_match))
+    # print refine_mode, 'G=%.4g B=%.4g rotx=%.4g roty=%.4g ry=%.4g rz=%.4g r0=%.4g re=%.4g a=%.4g b=%.4g c=%.4g alp=%.4g beta=%.4g gam=%.4g fpr=%.4g fxy=%.4g CCref=%5.2f CCiso=%5.2f dd_mm=%6.2f n_refl=%5.0f n_iso=%5.0f'%(G, B, rotx*180/math.pi, roty*180/math.pi, ry, rz, r0, re, a, b, c, alpha, beta, gamma, np.sum(((I_r - I_o_full)/sigI_o)**2), np.sum(delta_xy_flex**2), CC_ref*100, CC_iso*100, detector_distance_mm, len(I_o_full), len(I_o_match))
     # print refine_mode+' %10.2f %10.2f'%(np.sum(((I_r - I_o_full)/sigI_o)**2), np.sum(delta_xy_flex**2))
     return error
 
@@ -427,10 +434,10 @@ class leastsqr_handler(object):
 
         if pres_in is not None:
             b0 = pres_in.B
-            spot_radius = pres_in.spot_radius
+            r0 = pres_in.r0
         else:
             b0 = 0
-            spot_radius = calc_spot_radius(
+            r0 = calc_spot_radius(
                 sqr(crystal_init_orientation.reciprocal_matrix()),
                 observations_original_sel.indices(),
                 wavelength,
@@ -447,24 +454,21 @@ class leastsqr_handler(object):
                 observations_original_sel,
                 wavelength,
                 alpha_angle_sel,
-                iparams.b_refine_d_min,
                 crystal_init_orientation,
                 spot_pred_x_mm_sel,
                 spot_pred_y_mm_sel,
                 detector_distance_mm,
                 refine_mode,
                 const_params,
-                iparams.partiality_model,
                 b0,
-                spot_radius,
                 None,
-                iparams.flag_volume_correction,
+                iparams,
             ),
             full_output=True,
             maxfev=100,
         )
         G_fin, B_fin = xopt
-        rotx, roty, ry, rz, re, a, b, c, alpha, beta, gamma = const_params
+        rotx, roty, ry, rz, r0, re, a, b, c, alpha, beta, gamma = const_params
         two_theta = observations_original.two_theta(wavelength=wavelength)
         sin_theta_over_lambda_sq = two_theta.sin_theta_over_lambda_sq().data()
         uc = unit_cell((a, b, c, alpha, beta, gamma))
@@ -476,7 +480,7 @@ class leastsqr_handler(object):
             observations_original.indices(),
             ry,
             rz,
-            spot_radius,
+            r0,
             re,
             two_theta.data(),
             alpha_angle,
@@ -486,6 +490,7 @@ class leastsqr_handler(object):
             spot_pred_y_mm,
             detector_distance_mm,
             iparams.partiality_model,
+            iparams.flag_beam_divergence,
         )
 
         I_o_init = calc_full_refl(
@@ -606,9 +611,7 @@ class leastsqr_handler(object):
         )
 
         # extract refined parameters
-        G, B, rotx, roty, ry, rz, spot_radius, re, a, b, c, alpha, beta, gamma = (
-            init_params
-        )
+        G, B, rotx, roty, ry, rz, r0, re, a, b, c, alpha, beta, gamma = init_params
 
         # filter by partiality
         two_theta = observations_original_sel.two_theta(wavelength=wavelength).data()
@@ -620,7 +623,7 @@ class leastsqr_handler(object):
             observations_original_sel.indices(),
             ry,
             rz,
-            spot_radius,
+            r0,
             re,
             two_theta,
             alpha_angle_sel,
@@ -630,6 +633,7 @@ class leastsqr_handler(object):
             spot_pred_y_mm_sel,
             detector_distance_mm,
             iparams.partiality_model,
+            iparams.flag_beam_divergence,
         )
 
         observations_original_sel, alpha_angle_sel, spot_pred_x_mm_sel, spot_pred_y_mm_sel, I_ref_sel = self.get_filtered_data(
@@ -741,7 +745,7 @@ class leastsqr_handler(object):
             wavelength,
         )
         if pres_in is None:
-            ry, rz, re, rotx, roty = 0, 0, self.gamma_e, 0.0, 0.0
+            ry, rz, r0, re, rotx, roty = 0, 0, spot_radius, self.gamma_e, 0.0, 0.0
 
             # apply constrain on the unit cell using crystal system
             uc_scale_inp = prep_input(
@@ -749,7 +753,20 @@ class leastsqr_handler(object):
             )
             uc_scale_constrained = prep_output(uc_scale_inp, cs)
             a, b, c, alpha, beta, gamma = uc_scale_constrained
-            const_params_scale = (rotx, roty, ry, rz, re, a, b, c, alpha, beta, gamma)
+            const_params_scale = (
+                rotx,
+                roty,
+                ry,
+                rz,
+                r0,
+                re,
+                a,
+                b,
+                c,
+                alpha,
+                beta,
+                gamma,
+            )
             xopt_scalefactors, stats = self.optimize_scalefactors(
                 I_r_flex,
                 observations_original,
@@ -767,17 +784,17 @@ class leastsqr_handler(object):
             G, B = xopt_scalefactors
 
         else:
-            G, B, ry, rz, re, rotx, roty = (
+            G, B, ry, rz, r0, re, rotx, roty = (
                 pres_in.G,
                 pres_in.B,
                 pres_in.ry,
                 pres_in.rz,
+                pres_in.r0,
                 pres_in.re,
                 0.0,
                 0.0,
             )
             a, b, c, alpha, beta, gamma = pres_in.unit_cell.parameters()
-            spot_radius = pres_in.spot_radius
             crystal_init_orientation = pres_in.crystal_orientation
 
         # filter by partiality
@@ -790,7 +807,7 @@ class leastsqr_handler(object):
             observations_original_sel.indices(),
             ry,
             rz,
-            spot_radius,
+            r0,
             re,
             two_theta,
             alpha_angle_sel,
@@ -800,6 +817,7 @@ class leastsqr_handler(object):
             spot_pred_y_mm_sel,
             detector_distance_mm,
             iparams.partiality_model,
+            iparams.flag_beam_divergence,
         )
 
         observations_original_sel, alpha_angle_sel, spot_pred_x_mm_sel, spot_pred_y_mm_sel, I_ref_sel = self.get_filtered_data(
@@ -817,7 +835,7 @@ class leastsqr_handler(object):
         I_o_true = observations_original_sel.data().as_numpy_array()
 
         # calculate initial residual and residual_xy error
-        const_params_uc = (G, B, rotx, roty, ry, rz, re)
+        const_params_uc = (G, B, rotx, roty, ry, rz, r0, re)
         xinp_uc = prep_input((a, b, c, alpha, beta, gamma), cs)
         uc_params_err = func(
             xinp_uc,
@@ -825,23 +843,20 @@ class leastsqr_handler(object):
             observations_original_sel,
             wavelength,
             alpha_angle_sel,
-            iparams.b_refine_d_min,
             crystal_init_orientation,
             spot_pred_x_mm_sel,
             spot_pred_y_mm_sel,
             detector_distance_mm,
             "unit_cell",
             const_params_uc,
-            iparams.partiality_model,
             B,
-            spot_radius,
             miller_array_iso,
-            iparams.flag_volume_correction,
+            iparams,
         )
         init_residual_xy_err = np.sum(uc_params_err ** 2)
 
         const_params_all = None
-        xinp_all = np.array([G, B, rotx, roty, ry, rz, re])
+        xinp_all = np.array([G, B, rotx, roty, ry, rz, r0, re])
         xinp_all_uc = prep_input((a, b, c, alpha, beta, gamma), cs)
         xinp_all = np.append(xinp_all, xinp_all_uc)
         all_params_err = func(
@@ -850,25 +865,22 @@ class leastsqr_handler(object):
             observations_original_sel,
             wavelength,
             alpha_angle_sel,
-            iparams.b_refine_d_min,
             crystal_init_orientation,
             spot_pred_x_mm_sel,
             spot_pred_y_mm_sel,
             detector_distance_mm,
             "allparams",
             const_params_all,
-            iparams.partiality_model,
             B,
-            spot_radius,
             miller_array_iso,
-            iparams.flag_volume_correction,
+            iparams,
         )
         init_residual_err = np.sum(all_params_err ** 2)
 
         t_pr_list = [init_residual_err]
         t_xy_list = [init_residual_xy_err]
         refined_params_hist = [
-            (G, B, rotx, roty, ry, rz, spot_radius, re, a, b, c, alpha, beta, gamma)
+            (G, B, rotx, roty, ry, rz, r0, re, a, b, c, alpha, beta, gamma)
         ]
         txt_out = ""
 
@@ -885,7 +897,7 @@ class leastsqr_handler(object):
                     roty,
                     ry,
                     rz,
-                    spot_radius,
+                    r0,
                     re,
                     a,
                     b,
@@ -913,18 +925,31 @@ class leastsqr_handler(object):
 
                 if refine_mode == "scale_factor":
                     xinp = np.array([G, B])
-                    const_params = (rotx, roty, ry, rz, re, a, b, c, alpha, beta, gamma)
+                    const_params = (
+                        rotx,
+                        roty,
+                        ry,
+                        rz,
+                        r0,
+                        re,
+                        a,
+                        b,
+                        c,
+                        alpha,
+                        beta,
+                        gamma,
+                    )
                 elif refine_mode == "crystal_orientation":
                     xinp = np.array([rotx, roty])
-                    const_params = (G, B, ry, rz, re, a, b, c, alpha, beta, gamma)
+                    const_params = (G, B, ry, rz, r0, re, a, b, c, alpha, beta, gamma)
                 elif refine_mode == "reflecting_range":
-                    xinp = np.array([ry, rz, re])
+                    xinp = np.array([ry, rz, r0, re])
                     const_params = (G, B, rotx, roty, a, b, c, alpha, beta, gamma)
                 elif refine_mode == "unit_cell":
                     xinp = prep_input((a, b, c, alpha, beta, gamma), cs)
-                    const_params = (G, B, rotx, roty, ry, rz, re)
+                    const_params = (G, B, rotx, roty, ry, rz, r0, re)
                 elif refine_mode == "allparams":
-                    xinp = np.array([G, B, rotx, roty, ry, rz, re])
+                    xinp = np.array([G, B, rotx, roty, ry, rz, r0, re])
                     xinp_uc = prep_input((a, b, c, alpha, beta, gamma), cs)
                     xinp = np.append(xinp, xinp_uc)
                     const_params = None
@@ -937,18 +962,15 @@ class leastsqr_handler(object):
                         observations_original_sel,
                         wavelength,
                         alpha_angle_sel,
-                        iparams.b_refine_d_min,
                         crystal_init_orientation,
                         spot_pred_x_mm_sel,
                         spot_pred_y_mm_sel,
                         detector_distance_mm,
                         refine_mode,
                         const_params,
-                        iparams.partiality_model,
                         B,
-                        spot_radius,
                         miller_array_iso,
-                        iparams.flag_volume_correction,
+                        iparams,
                     ),
                     full_output=True,
                     maxfev=100,
@@ -970,31 +992,28 @@ class leastsqr_handler(object):
                     elif refine_mode == "crystal_orientation":
                         rotx, roty = xopt
                     elif refine_mode == "reflecting_range":
-                        ry, rz, re = xopt
+                        ry, rz, r0, re = xopt
                     elif refine_mode == "allparams":
-                        G, B, rotx, roty, ry, rz, re = xopt[:7]
-                        xinp_uc = xopt[7:]
+                        G, B, rotx, roty, ry, rz, r0, re = xopt[:8]
+                        xinp_uc = xopt[8:]
                         a, b, c, alpha, beta, gamma = prep_output(xinp_uc, cs)
 
-                    const_params_uc = (G, B, rotx, roty, ry, rz, re)
+                    const_params_uc = (G, B, rotx, roty, ry, rz, r0, re)
                     uc_params_err = func(
                         xinp_uc,
                         I_r_true,
                         observations_original_sel,
                         wavelength,
                         alpha_angle_sel,
-                        iparams.b_refine_d_min,
                         crystal_init_orientation,
                         spot_pred_x_mm_sel,
                         spot_pred_y_mm_sel,
                         detector_distance_mm,
                         "unit_cell",
                         const_params_uc,
-                        iparams.partiality_model,
                         B,
-                        spot_radius,
                         miller_array_iso,
-                        iparams.flag_volume_correction,
+                        iparams,
                     )
                     current_residual_xy_err = np.sum(uc_params_err ** 2)
                 elif refine_mode == "unit_cell":
@@ -1003,7 +1022,7 @@ class leastsqr_handler(object):
                     a, b, c, alpha, beta, gamma = xopt_uc
 
                     # check the unit-cell with the reference intensity
-                    xinp = np.array([G, B, rotx, roty, ry, rz, re])
+                    xinp = np.array([G, B, rotx, roty, ry, rz, r0, re])
                     xinp_uc = prep_input((a, b, c, alpha, beta, gamma), cs)
                     xinp = np.append(xinp, xinp_uc)
                     const_params = None
@@ -1013,18 +1032,15 @@ class leastsqr_handler(object):
                         observations_original_sel,
                         wavelength,
                         alpha_angle_sel,
-                        iparams.b_refine_d_min,
                         crystal_init_orientation,
                         spot_pred_x_mm_sel,
                         spot_pred_y_mm_sel,
                         detector_distance_mm,
                         "allparams",
                         const_params,
-                        iparams.partiality_model,
                         B,
-                        spot_radius,
                         miller_array_iso,
-                        iparams.flag_volume_correction,
+                        iparams,
                     )
                     current_residual_err = np.sum(all_params_err ** 2)
 
@@ -1049,7 +1065,7 @@ class leastsqr_handler(object):
                                 roty,
                                 ry,
                                 rz,
-                                spot_radius,
+                                r0,
                                 re,
                                 a,
                                 b,
@@ -1061,6 +1077,9 @@ class leastsqr_handler(object):
                         )
                         flag_success = True
                 else:
+                    # print '---'
+                    # print '%.4g %.4g %.4g %.4g %.4g %.4g'%(current_residual_err, t_pr_list[len(t_pr_list)-1], t_pr_list[len(t_pr_list)-1]*iparams.postref.residual_threshold/100, current_residual_xy_err, t_xy_list[len(t_xy_list)-1], t_xy_list[len(t_xy_list)-1]*iparams.postref.residual_threshold_xy/100)
+                    # print '---'
                     if current_residual_err < (
                         t_pr_list[len(t_pr_list) - 1]
                         + (
@@ -1087,7 +1106,7 @@ class leastsqr_handler(object):
                                     roty,
                                     ry,
                                     rz,
-                                    spot_radius,
+                                    r0,
                                     re,
                                     a,
                                     b,
@@ -1098,15 +1117,17 @@ class leastsqr_handler(object):
                                 )
                             )
                             flag_success = True
+                            # print 'accecpt', G, B, rotx, roty, ry, rz, r0, re, a, b, c, alpha, beta, gamma
 
                 if flag_success is False:
-                    G, B, rotx, roty, ry, rz, spot_radius, re, a, b, c, alpha, beta, gamma = refined_params_hist[
+                    G, B, rotx, roty, ry, rz, r0, re, a, b, c, alpha, beta, gamma = refined_params_hist[
                         len(refined_params_hist) - 1
                     ]
+                    # print 'reverted to', G, B, rotx, roty, ry, rz, r0, re, a, b, c, alpha, beta, gamma
 
                 tmp_txt_out = (
                     refine_mode
-                    + " %3.0f %6.4f %6.4f %6.4f %6.4f %10.8f %10.8f %10.8f %6.3f %6.3f %.4g %6.3f\n"
+                    + " %3.0f %6.4f %6.4f %6.4f %6.4f %10.8f %10.8f %10.8f %10.8f %6.3f %6.3f %.4g %6.3f\n"
                     % (
                         i_sub_cycle,
                         G,
@@ -1115,6 +1136,7 @@ class leastsqr_handler(object):
                         roty * 180 / math.pi,
                         ry,
                         rz,
+                        r0,
                         re,
                         a,
                         c,
@@ -1150,6 +1172,7 @@ class leastsqr_handler(object):
                 spot_pred_y_mm,
                 detector_distance_mm,
                 iparams.partiality_model,
+                iparams.flag_beam_divergence,
             )
 
             I_o_init = calc_full_refl(
@@ -1170,7 +1193,7 @@ class leastsqr_handler(object):
                 observations_original.indices(),
                 pres_in.ry,
                 pres_in.rz,
-                pres_in.spot_radius,
+                pres_in.r0,
                 pres_in.re,
                 two_theta,
                 alpha_angle,
@@ -1180,6 +1203,7 @@ class leastsqr_handler(object):
                 spot_pred_y_mm,
                 detector_distance_mm,
                 iparams.partiality_model,
+                iparams.flag_beam_divergence,
             )
             I_o_init = calc_full_refl(
                 observations_original.data(),
@@ -1198,7 +1222,7 @@ class leastsqr_handler(object):
             observations_original.indices(),
             ry,
             rz,
-            spot_radius,
+            r0,
             re,
             two_theta,
             alpha_angle,
@@ -1208,6 +1232,7 @@ class leastsqr_handler(object):
             spot_pred_y_mm,
             detector_distance_mm,
             iparams.partiality_model,
+            iparams.flag_beam_divergence,
         )
 
         I_o_fin = calc_full_refl(
@@ -1236,15 +1261,11 @@ class leastsqr_handler(object):
             R_final = R_init
             R_xy_final = R_xy_init
             if pres_in is None:
-                spot_radius = calc_spot_radius(
-                    sqr(crystal_init_orientation.reciprocal_matrix()),
-                    observations_original_sel.indices(),
-                    wavelength,
-                )
                 G = 1.0
                 B = 0.0
-                ry = spot_radius
-                rz = spot_radius
+                r0 = spot_radius
+                ry = 0.0
+                rz = 0.0
                 re = self.gamma_e
                 rotx = 0.0
                 roty = 0.0
@@ -1254,10 +1275,10 @@ class leastsqr_handler(object):
             else:
                 G = pres_in.G
                 B = pres_in.B
+                r0 = pres_in.r0
                 ry = pres_in.ry
                 rz = pres_in.rz
                 re = pres_in.re
-                spot_radius = pres_in.spot_radius
                 rotx = 0.0
                 roty = 0.0
                 a, b, c, alpha, beta, gamma = pres_in.unit_cell.parameters()
@@ -1296,7 +1317,7 @@ class leastsqr_handler(object):
             print "roty %.4g (%.4g degrees)" % (roty, roty * 180 / math.pi)
             print "ry %.4g" % (ry)
             print "rz %.4g" % (rz)
-            print "r0 %.4g" % (spot_radius)
+            print "r0 %.4g" % (r0)
             print "re %.4g" % (re)
             print "uc", a, b, c, alpha, beta, gamma
             print "S = %.4g" % SE_of_the_estimate
@@ -1396,8 +1417,7 @@ class leastsqr_handler(object):
                 linestyle="-",
                 linewidth=2.0,
                 c="b",
-                label="Final ry=%.4g ry=%.4g r0=%.4g re=%.4g"
-                % (ry, rz, spot_radius, re),
+                label="Final ry=%.4g ry=%.4g r0=%.4g re=%.4g" % (ry, rz, r0, re),
             )
             legend = plt.legend(loc="lower right", shadow=False)
             for label in legend.get_texts():
@@ -1491,7 +1511,7 @@ class leastsqr_handler(object):
             plt.ylabel("1/Angstrom")
             plt.show()
 
-        xopt = (G, B, rotx, roty, ry, rz, re, a, b, c, alpha, beta, gamma)
+        xopt = (G, B, rotx, roty, ry, rz, r0, re, a, b, c, alpha, beta, gamma)
 
         return (
             xopt,
@@ -1508,5 +1528,4 @@ class leastsqr_handler(object):
                 CC_iso_final,
             ),
             len(I_ref_sel),
-            spot_radius,
         )

@@ -402,28 +402,25 @@ class postref_handler(object):
 
         # 4. Do least-squares refinement
         lsqrh = leastsqr_handler()
-        try:
-            refined_params, stats, n_refl_postrefined, spot_radius = lsqrh.optimize(
-                I_ref_match,
-                observations_original_sel,
-                wavelength,
-                crystal_init_orientation,
-                alpha_angle_set,
-                spot_pred_x_mm_set,
-                spot_pred_y_mm_set,
-                iparams,
-                pres_in,
-                observations_non_polar_sel,
-                detector_distance_mm,
-            )
-        except Exception:
-            return (
-                None,
-                "Optimization failed. " + pickle_filepaths[len(pickle_filepaths) - 1],
-            )
+        # try:
+        refined_params, stats, n_refl_postrefined = lsqrh.optimize(
+            I_ref_match,
+            observations_original_sel,
+            wavelength,
+            crystal_init_orientation,
+            alpha_angle_set,
+            spot_pred_x_mm_set,
+            spot_pred_y_mm_set,
+            iparams,
+            pres_in,
+            observations_non_polar_sel,
+            detector_distance_mm,
+        )
+        # except Exception:
+        #  return None, 'Optimization failed. '+pickle_filepaths[len(pickle_filepaths)-1]
 
         # caculate partiality for output (with target_anomalous check)
-        G_fin, B_fin, rotx_fin, roty_fin, ry_fin, rz_fin, re_fin, a_fin, b_fin, c_fin, alpha_fin, beta_fin, gamma_fin = (
+        G_fin, B_fin, rotx_fin, roty_fin, ry_fin, rz_fin, r0_fin, re_fin, a_fin, b_fin, c_fin, alpha_fin, beta_fin, gamma_fin = (
             refined_params
         )
         inputs, txt_organize_input = self.organize_input(
@@ -452,7 +449,7 @@ class postref_handler(object):
             observations_original.indices(),
             ry_fin,
             rz_fin,
-            spot_radius,
+            r0_fin,
             re_fin,
             two_theta,
             alpha_angle,
@@ -462,6 +459,7 @@ class postref_handler(object):
             spot_pred_y_mm,
             detector_distance_mm,
             iparams.partiality_model,
+            iparams.flag_beam_divergence,
         )
 
         # calculate the new crystal orientation
@@ -503,7 +501,6 @@ class postref_handler(object):
             pickle_filename=pickle_filename,
             wavelength=wavelength,
             crystal_orientation=crystal_fin_orientation,
-            spot_radius=spot_radius,
         )
 
         txt_postref = (
@@ -659,7 +656,7 @@ class postref_handler(object):
         uc_params = observations_original.unit_cell().parameters()
         from mod_leastsqr import calc_spot_radius
 
-        spot_radius = calc_spot_radius(
+        r0 = calc_spot_radius(
             sqr(crystal_init_orientation.reciprocal_matrix()),
             observations_original_sel.indices(),
             wavelength,
@@ -689,7 +686,7 @@ class postref_handler(object):
             observations_original.indices(),
             ry,
             rz,
-            spot_radius,
+            r0,
             re,
             two_theta,
             alpha_angle,
@@ -699,6 +696,7 @@ class postref_handler(object):
             spot_pred_y_mm,
             detector_distance_mm,
             iparams.partiality_model,
+            iparams.flag_beam_divergence,
         )
 
         refined_params = np.array(
@@ -709,6 +707,7 @@ class postref_handler(object):
                 roty,
                 ry,
                 rz,
+                r0,
                 re,
                 uc_params[0],
                 uc_params[1],
@@ -731,7 +730,6 @@ class postref_handler(object):
             frame_no=frame_no,
             pickle_filename=pickle_filename,
             wavelength=wavelength,
-            spot_radius=spot_radius,
         )
 
         txt_scale_frame_by_mean_I = (
