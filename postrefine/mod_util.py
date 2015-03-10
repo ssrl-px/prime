@@ -333,6 +333,7 @@ class intensities_scaler(object):
             wavelength_set,
             sin_theta_over_lambda_sq,
             SE,
+            pickle_filename_set,
         )
         engine.avg_mode = avg_mode_cpp
         engine.sigma_max = sigma_max
