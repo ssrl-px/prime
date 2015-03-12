@@ -402,22 +402,25 @@ class postref_handler(object):
 
         # 4. Do least-squares refinement
         lsqrh = leastsqr_handler()
-        # try:
-        refined_params, stats, n_refl_postrefined = lsqrh.optimize(
-            I_ref_match,
-            observations_original_sel,
-            wavelength,
-            crystal_init_orientation,
-            alpha_angle_set,
-            spot_pred_x_mm_set,
-            spot_pred_y_mm_set,
-            iparams,
-            pres_in,
-            observations_non_polar_sel,
-            detector_distance_mm,
-        )
-        # except Exception:
-        #  return None, 'Optimization failed. '+pickle_filepaths[len(pickle_filepaths)-1]
+        try:
+            refined_params, stats, n_refl_postrefined = lsqrh.optimize(
+                I_ref_match,
+                observations_original_sel,
+                wavelength,
+                crystal_init_orientation,
+                alpha_angle_set,
+                spot_pred_x_mm_set,
+                spot_pred_y_mm_set,
+                iparams,
+                pres_in,
+                observations_non_polar_sel,
+                detector_distance_mm,
+            )
+        except Exception:
+            return (
+                None,
+                "Optimization failed. " + pickle_filepaths[len(pickle_filepaths) - 1],
+            )
 
         # caculate partiality for output (with target_anomalous check)
         G_fin, B_fin, rotx_fin, roty_fin, ry_fin, rz_fin, r0_fin, re_fin, a_fin, b_fin, c_fin, alpha_fin, beta_fin, gamma_fin = (

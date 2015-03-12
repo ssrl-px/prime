@@ -44,7 +44,7 @@ def postrefine_by_frame_mproc(
     from prime.postrefine import postref_handler
 
     prh = postref_handler()
-    if pres_results is None:
+    if len(pres_results) == 0:
         pres_in = None
     else:
         pres_in = pres_results[frame_no]
@@ -440,7 +440,7 @@ if __name__ == "__main__":
     n_iters = iparams.n_postref_cycle
     txt_merge_postref = ""
     postrefine_by_frame_result = None
-    postrefine_by_frame_pres_list = None
+    postrefine_by_frame_pres_list = []
     for i in range(n_iters):
         miller_array_ref = miller_array_ref.generate_bijvoet_mates()
         if i == (n_iters - 1):
@@ -473,17 +473,16 @@ if __name__ == "__main__":
             processes=iparams.n_processors,
         )
 
-        postrefine_by_frame_pres_list = [
-            postrefine_by_frame_tuple[0]
-            for postrefine_by_frame_tuple in postrefine_by_frame_result
-        ]
-
         postrefine_by_frame_good = []
+        postrefine_by_frame_pres_list = []
         for results in postrefine_by_frame_result:
             if results is not None:
                 pres, txt_out_result = results
+                postrefine_by_frame_pres_list.append(pres)
                 if pres is not None:
                     postrefine_by_frame_good.append(pres)
+            else:
+                postrefine_by_frame_pres_list.append(None)
 
         if len(postrefine_by_frame_good) > 0:
 
