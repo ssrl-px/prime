@@ -127,6 +127,7 @@ def get_Eoc_corrected_observations(pickle_filename, iparams):
         spot_pred_y_mm,
         detector_distance_mm,
         iparams.partiality_model,
+        iparams.flag_beam_divergence,
     )
 
     from prime.postrefine.mod_leastsqr import calc_full_refl
