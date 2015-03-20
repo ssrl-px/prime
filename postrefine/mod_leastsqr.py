@@ -112,9 +112,9 @@ def calc_partiality_anisotropy_set(
         if flag_beam_divergence:
             rs = math.sqrt(
                 (ry * math.cos(alpha_angle)) ** 2 + (rz * math.sin(alpha_angle)) ** 2
-            ) + (r0 + (abs(re) * math.tan(bragg_angle)))
+            ) + (abs(r0) + (abs(re) * math.tan(bragg_angle)))
         else:
-            rs = r0 + (abs(re) * math.tan(bragg_angle))
+            rs = abs(r0) + (abs(re) * math.tan(bragg_angle))
         h = col(miller_index)
         x = A_star * h
         S = x + S0
@@ -236,8 +236,9 @@ def func(params, *args):
         a, b, c, alpha, beta, gamma = prep_output(params, cs)
         G, B, rotx, roty, ry, rz, r0, re = const_params
     elif refine_mode == "allparams":
-        a, b, c, alpha, beta, gamma = prep_output(params[8:], cs)
-        G, B, rotx, roty, ry, rz, r0, re = params[0:8]
+        a, b, c, alpha, beta, gamma = prep_output(params[6:], cs)
+        rotx, roty, ry, rz, r0, re = params[0:6]
+        G, B = const_params
 
     try:
         uc = unit_cell((a, b, c, alpha, beta, gamma))
@@ -557,13 +558,7 @@ class leastsqr_handler(object):
         detector_distance_mm,
     ):
         # prepare data
-        if refine_mode == "scale_factor":
-            pr_d_min = iparams.postref.scale.d_min
-            pr_d_max = iparams.postref.scale.d_max
-            pr_sigma_min = iparams.postref.scale.sigma_min
-            pr_partiality_min = iparams.postref.scale.partiality_min
-            pr_uc_tol = iparams.postref.unit_cell.uc_tolerance
-        elif refine_mode == "crystal_orientation":
+        if refine_mode == "crystal_orientation":
             pr_d_min = iparams.postref.crystal_orientation.d_min
             pr_d_max = iparams.postref.crystal_orientation.d_max
             pr_sigma_min = iparams.postref.crystal_orientation.sigma_min
@@ -675,9 +670,7 @@ class leastsqr_handler(object):
         if iparams.postref.allparams.flag_on:
             refine_steps = ["allparams"]
         else:
-            refine_steps = ["scale_factor"]
-            if iparams.postref.crystal_orientation.flag_on:
-                refine_steps.append("crystal_orientation")
+            refine_steps = ["crystal_orientation"]
             if iparams.postref.reflecting_range.flag_on:
                 refine_steps.append("reflecting_range")
             if iparams.postref.unit_cell.flag_on:
@@ -856,9 +849,10 @@ class leastsqr_handler(object):
         init_residual_xy_err = np.sum(uc_params_err ** 2)
 
         const_params_all = None
-        xinp_all = np.array([G, B, rotx, roty, ry, rz, r0, re])
+        xinp_all = np.array([rotx, roty, ry, rz, r0, re])
         xinp_all_uc = prep_input((a, b, c, alpha, beta, gamma), cs)
         xinp_all = np.append(xinp_all, xinp_all_uc)
+        const_params_all = (G, B)
         all_params_err = func(
             xinp_all,
             I_r_true,
@@ -923,23 +917,7 @@ class leastsqr_handler(object):
                 I_r_true = I_ref_sel.as_numpy_array()
                 I_o_true = observations_original_sel.data().as_numpy_array()
 
-                if refine_mode == "scale_factor":
-                    xinp = np.array([G, B])
-                    const_params = (
-                        rotx,
-                        roty,
-                        ry,
-                        rz,
-                        r0,
-                        re,
-                        a,
-                        b,
-                        c,
-                        alpha,
-                        beta,
-                        gamma,
-                    )
-                elif refine_mode == "crystal_orientation":
+                if refine_mode == "crystal_orientation":
                     xinp = np.array([rotx, roty])
                     const_params = (G, B, ry, rz, r0, re, a, b, c, alpha, beta, gamma)
                 elif refine_mode == "reflecting_range":
@@ -949,10 +927,10 @@ class leastsqr_handler(object):
                     xinp = prep_input((a, b, c, alpha, beta, gamma), cs)
                     const_params = (G, B, rotx, roty, ry, rz, r0, re)
                 elif refine_mode == "allparams":
-                    xinp = np.array([G, B, rotx, roty, ry, rz, r0, re])
+                    xinp = np.array([rotx, roty, ry, rz, r0, re])
                     xinp_uc = prep_input((a, b, c, alpha, beta, gamma), cs)
                     xinp = np.append(xinp, xinp_uc)
-                    const_params = None
+                    const_params = (G, B)
 
                 xopt, cov_x, infodict, mesg, ier = optimize.leastsq(
                     func,
@@ -977,8 +955,7 @@ class leastsqr_handler(object):
                 )
 
                 if (
-                    refine_mode == "scale_factor"
-                    or refine_mode == "crystal_orientation"
+                    refine_mode == "crystal_orientation"
                     or refine_mode == "reflecting_range"
                     or refine_mode == "allparams"
                 ):
@@ -987,15 +964,13 @@ class leastsqr_handler(object):
 
                     # calculate residual_xy_error (for refine_mode = SF, CO, RR, and all params)
                     xinp_uc = prep_input((a, b, c, alpha, beta, gamma), cs)
-                    if refine_mode == "scale_factor":
-                        G, B = xopt
-                    elif refine_mode == "crystal_orientation":
+                    if refine_mode == "crystal_orientation":
                         rotx, roty = xopt
                     elif refine_mode == "reflecting_range":
                         ry, rz, r0, re = xopt
                     elif refine_mode == "allparams":
-                        G, B, rotx, roty, ry, rz, r0, re = xopt[:8]
-                        xinp_uc = xopt[8:]
+                        rotx, roty, ry, rz, r0, re = xopt[:6]
+                        xinp_uc = xopt[6:]
                         a, b, c, alpha, beta, gamma = prep_output(xinp_uc, cs)
 
                     const_params_uc = (G, B, rotx, roty, ry, rz, r0, re)
@@ -1022,10 +997,10 @@ class leastsqr_handler(object):
                     a, b, c, alpha, beta, gamma = xopt_uc
 
                     # check the unit-cell with the reference intensity
-                    xinp = np.array([G, B, rotx, roty, ry, rz, r0, re])
+                    xinp = np.array([rotx, roty, ry, rz, r0, re])
                     xinp_uc = prep_input((a, b, c, alpha, beta, gamma), cs)
                     xinp = np.append(xinp, xinp_uc)
-                    const_params = None
+                    const_params = (G, B)
                     all_params_err = func(
                         xinp,
                         I_r_true,
@@ -1117,13 +1092,13 @@ class leastsqr_handler(object):
                                 )
                             )
                             flag_success = True
-                            # print 'accecpt', G, B, rotx, roty, ry, rz, r0, re, a, b, c, alpha, beta, gamma
+                            # print 'Refine ', refine_mode, '- accecpted', G, B, rotx, roty, ry, rz, r0, re, a, b, c, alpha, beta, gamma
 
                 if flag_success is False:
                     G, B, rotx, roty, ry, rz, r0, re, a, b, c, alpha, beta, gamma = refined_params_hist[
                         len(refined_params_hist) - 1
                     ]
-                    # print 'reverted to', G, B, rotx, roty, ry, rz, r0, re, a, b, c, alpha, beta, gamma
+                    # print 'Refine ', refine_mode, '- reverted to', G, B, rotx, roty, ry, rz, r0, re, a, b, c, alpha, beta, gamma
 
                 tmp_txt_out = (
                     refine_mode
@@ -1333,7 +1308,8 @@ class leastsqr_handler(object):
                 np.max(flex.abs(rh_fin)),
                 np.min(flex.abs(rh_fin)),
             )
-            print "CC = %.4g" % (CC_final)
+            print "CCref = %.4g" % (CC_final)
+            print "CCiso = %.4g" % (CC_iso_final)
 
             plt.subplot(221)
             plt.scatter(I_r_flex, I_o_init, s=10, marker="x", c="r")

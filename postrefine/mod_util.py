@@ -24,7 +24,7 @@ class intensities_scaler(object):
         """Constructor."""
         self.CONST_SE_MIN_WEIGHT = 0.17
         self.CONST_SE_MAX_WEIGHT = 1.0
-        self.CONST_SIG_I_FACTOR = 5.0
+        self.CONST_SIG_I_FACTOR = 1.5
 
     def calc_avg_I(
         self,
@@ -73,6 +73,15 @@ class intensities_scaler(object):
             rs_set,
             iparams.flag_volume_correction,
         )
+        sigI_full = calc_full_refl(
+            sigI,
+            sin_theta_over_lambda_sq,
+            G,
+            B,
+            p_set,
+            rs_set,
+            iparams.flag_volume_correction,
+        )
 
         # reject outliers
         median_I = np.median(I_full)
@@ -112,6 +121,7 @@ class intensities_scaler(object):
                 B = B.select(i_sel)
                 I = I.select(i_sel)
                 sigI = sigI.select(i_sel)
+                sigI_full = sigI_full.select(i_sel)
                 miller_indices_ori = miller_indices_ori.select(i_sel)
 
                 # update list of pickle files
@@ -173,7 +183,7 @@ class intensities_scaler(object):
             print
 
         # test calculation of sigI
-        sigI_full = flex.sqrt(I_full) * SE_std_norm
+        # sigI_full = flex.sqrt(I_full) * SE_std_norm
         sigI_avg = np.mean(sigI_full)
 
         # Rmeas, Rmeas_w, multiplicity
@@ -456,8 +466,8 @@ class intensities_scaler(object):
                 np.mean(B_all),
                 np.mean(flex.abs(ry_all)),
                 np.mean(flex.abs(rz_all)),
-                np.mean(re_all),
-                np.mean(r0_all),
+                np.mean(flex.abs(re_all)),
+                np.mean(flex.abs(r0_all)),
                 np.mean(flex.abs(rotx_all)),
                 np.mean(flex.abs(roty_all)),
                 np.mean(R_final_all),
@@ -471,8 +481,8 @@ class intensities_scaler(object):
                 np.median(B_all),
                 np.median(flex.abs(ry_all)),
                 np.median(flex.abs(rz_all)),
-                np.median(re_all),
-                np.median(r0_all),
+                np.median(flex.abs(re_all)),
+                np.median(flex.abs(r0_all)),
                 np.median(flex.abs(rotx_all)),
                 np.median(flex.abs(roty_all)),
                 np.median(R_final_all),
@@ -486,8 +496,8 @@ class intensities_scaler(object):
                 np.std(B_all),
                 np.std(flex.abs(ry_all)),
                 np.std(flex.abs(rz_all)),
-                np.std(re_all),
-                np.std(r0_all),
+                np.std(flex.abs(re_all)),
+                np.std(flex.abs(r0_all)),
                 np.std(flex.abs(rotx_all)),
                 np.std(flex.abs(roty_all)),
                 np.std(R_final_all),
@@ -1109,8 +1119,8 @@ class intensities_scaler(object):
         csv_out += "Bin, Low, High, Completeness, <N_obs>, Rmeas, Qw, CC1/2, N_ind, CCiso, N_ind, CCanoma, N_ind, CCanomc, N_ind, <I/sigI>\n"
         txt_out = "\n"
         txt_out += "Summary for " + output_mtz_file_prefix + "_merge.mtz\n"
-        txt_out += "Bin Resolution Range     Completeness      <N_obs>  |CC1/2   N_ind |CCiso   N_ind|CCanoma  N_ind CCanomc  N_ind| <I/sigI>   <I>\n"
-        txt_out += "-----------------------------------------------------------------------------------------------------------------------------------\n"
+        txt_out += "Bin Resolution Range     Completeness      <N_obs>  |Rmeas    Qw     CC1/2   N_ind |CCiso   N_ind|CCanoma  N_ind CCanomc  N_ind| <I/sigI>   <I>\n"
+        txt_out += "--------------------------------------------------------------------------------------------------------------------------------------------------\n"
         sum_r_meas_w_top = 0
         sum_r_meas_w_btm = 0
         sum_r_meas_top = 0
@@ -1210,7 +1220,8 @@ class intensities_scaler(object):
                 multiplicity_bin = 0
                 r_meas_w_bin = 0
                 r_meas_bin = 0
-                cc12 = 0
+                cc12_bin = 0
+                n_refl_cc12_bin = 0
             else:
                 mean_i_over_sigi_bin = flex.mean(I_bin / sigI_bin)
                 stat_bin = [stat_all[pair[1]] for pair in matches_template.pairs()]
@@ -1302,11 +1313,11 @@ class intensities_scaler(object):
                             )
                             ** 2
                         )
-                        * math.sqrt(n_refl_cciso_bin / (n_refl_cciso_bin - 1))
+                        * math.sqrt(n_refl_cciso_bin / (max(1, n_refl_cciso_bin - 1)))
                     ) / flex.sum((I_merge_match_iso / sigI_merge_match_iso) ** 2)
 
             txt_out += (
-                "%02d %7.2f - %7.2f %5.1f %6.0f / %6.0f %7.2f %7.2f %6.0f %7.2f %6.0f %7.2f %6.0f %7.2f %6.0f %8.2f %10.2f"
+                "%02d %7.2f - %7.2f %5.1f %6.0f / %6.0f %7.2f %7.2f %7.2f %7.2f %6.0f %7.2f %6.0f %7.2f %6.0f %7.2f %6.0f %8.2f %10.2f"
                 % (
                     i,
                     binner_template_asu.bin_d_range(i)[0],
@@ -1315,6 +1326,8 @@ class intensities_scaler(object):
                     len(miller_indices_obs_bin),
                     len(miller_indices_bin),
                     multiplicity_bin,
+                    r_meas_bin,
+                    r_meas_w_bin,
                     cc12_bin * 100,
                     n_refl_cc12_bin,
                     cc_iso_bin * 100,
@@ -1402,14 +1415,16 @@ class intensities_scaler(object):
         else:
             r_meas = float("Inf")
 
-        txt_out += "-----------------------------------------------------------------------------------------------------------------------------------\n"
+        txt_out += "--------------------------------------------------------------------------------------------------------------------------------------------------\n"
         txt_out += (
-            "        TOTAL        %5.1f %6.0f / %6.0f %7.2f %7.2f %6.0f %7.2f %6.0f %7.2f %6.0f %7.2f %6.0f %8.2f %10.2f\n"
+            "        TOTAL        %5.1f %6.0f / %6.0f %7.2f %7.2f %7.2f %7.2f %6.0f %7.2f %6.0f %7.2f %6.0f %7.2f %6.0f %8.2f %10.2f\n"
             % (
                 (sum_refl_obs / sum_refl_complete) * 100,
                 sum_refl_obs,
                 sum_refl_complete,
                 n_refl_obs_total / sum_refl_obs,
+                r_meas,
+                r_meas_w,
                 cc12 * 100,
                 len(I_even.select(i_even_filter_sel)),
                 cc_iso * 100,
@@ -1422,7 +1437,7 @@ class intensities_scaler(object):
                 np.mean(miller_array_merge.data()),
             )
         )
-        txt_out += "-----------------------------------------------------------------------------------------------------------------------------------\n"
+        txt_out += "--------------------------------------------------------------------------------------------------------------------------------------------------\n"
 
         return miller_array_merge, txt_out, csv_out
 

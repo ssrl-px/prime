@@ -50,7 +50,7 @@ class postref_handler(object):
         spot_pred_x_mm = flex.double([pred[0] - xbeam for pred in mm_predictions])
         spot_pred_y_mm = flex.double([pred[1] - ybeam for pred in mm_predictions])
 
-        # Lorentz-polarization correction
+        # Polarization correction
         wavelength = observations_pickle["wavelength"]
 
         if iparams.flag_LP_correction:
@@ -95,14 +95,19 @@ class postref_handler(object):
                 observations.crystal_symmetry().space_group().crystal_system()
             )
 
-        try:
-            # apply constrain using the crystal system
-            from mod_leastsqr import prep_input, prep_output
+        from mod_leastsqr import prep_input, prep_output
 
+        if iparams.flag_override_unit_cell:
+            uc_constrained_inp = prep_input(
+                iparams.target_unit_cell.parameters(), target_crystal_system
+            )
+        else:
             uc_constrained_inp = prep_input(
                 observations.unit_cell().parameters(), target_crystal_system
             )
-            uc_constrained = prep_output(uc_constrained_inp, target_crystal_system)
+        uc_constrained = prep_output(uc_constrained_inp, target_crystal_system)
+        try:
+            # apply constrain using the crystal system
             miller_set = symmetry(
                 unit_cell=uc_constrained, space_group_symbol=iparams.target_space_group
             ).build_miller_set(
@@ -114,7 +119,7 @@ class postref_handler(object):
                 crystal_symmetry=miller_set.crystal_symmetry(),
             )
         except Exception:
-            a, b, c, alpha, beta, gamma = observations.unit_cell().parameters()
+            a, b, c, alpha, beta, gamma = uc_constrained
             txt_exception = (
                 "Mismatch spacegroup (%6.2f,%6.2f,%6.2f,%6.2f,%6.2f,%6.2f)"
                 % (a, b, c, alpha, beta, gamma)
@@ -199,6 +204,42 @@ class postref_handler(object):
         alpha_angle_obs = alpha_angle_obs.select(i_sel)
         spot_pred_x_mm = spot_pred_x_mm.select(i_sel)
         spot_pred_y_mm = spot_pred_y_mm.select(i_sel)
+
+        # filter icering (if on)
+        if iparams.icering.flag_on:
+            miller_indices = flex.miller_index()
+            I_set = flex.double()
+            sigI_set = flex.double()
+            alpha_angle_obs_set = flex.double()
+            spot_pred_x_mm_set = flex.double()
+            spot_pred_y_mm_set = flex.double()
+            for miller_index, d, I, sigI, alpha, spot_x, spot_y in zip(
+                observations.indices(),
+                observations.d_spacings().data(),
+                observations.data(),
+                observations.sigmas(),
+                alpha_angle_obs,
+                spot_pred_x_mm,
+                spot_pred_y_mm,
+            ):
+                if d > iparams.icering.d_upper or d < iparams.icering.d_lower:
+                    miller_indices.append(miller_index)
+                    I_set.append(I)
+                    sigI_set.append(sigI)
+                    alpha_angle_obs_set.append(alpha)
+                    spot_pred_x_mm_set.append(spot_x)
+                    spot_pred_y_mm_set.append(spot_y)
+
+                    # print 'Accept', miller_index, d, I, sigI
+                # else:
+                # print 'Discard', miller_index, d, I, sigI
+
+            observations = observations.customized_copy(
+                indices=miller_indices, data=I_set, sigmas=sigI_set
+            )
+            alpha_angle_obs = alpha_angle_obs_set
+            spot_pred_x_mm = spot_pred_x_mm_set
+            spot_pred_y_mm = spot_pred_y_mm_set
 
         if iparams.flag_replace_sigI:
             observations = observations.customized_copy(
