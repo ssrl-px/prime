@@ -186,7 +186,7 @@ class intensities_scaler(object):
         # sigI_full = flex.sqrt(I_full) * SE_std_norm
         sigI_avg = np.mean(sigI_full)
 
-        # Rmeas, Rmeas_w, multiplicity
+        # Rmerge, Rmerge_w, multiplicity
         multiplicity = len(I_full)
         r_meas_w_top = 0.0
         r_meas_w_btm = 0.0
@@ -196,13 +196,9 @@ class intensities_scaler(object):
         r_meas_w = 0.0
         if multiplicity > 1:
             n_obs = multiplicity
-            r_meas_w_top = flex.sum(((I_full - I_avg) * SE_norm) ** 2) * math.sqrt(
-                n_obs / (n_obs - 1)
-            )
+            r_meas_w_top = flex.sum(((I_full - I_avg) * SE_norm) ** 2)
             r_meas_w_btm = flex.sum((I_full * SE_norm) ** 2)
-            r_meas_top = flex.sum(flex.abs((I_full - I_avg) * SE_norm)) * math.sqrt(
-                n_obs / (n_obs - 1)
-            )
+            r_meas_top = flex.sum(flex.abs((I_full - I_avg) * SE_norm))
             r_meas_btm = flex.sum(flex.abs(I_full * SE_norm))
             r_meas = r_meas_top / r_meas_btm
             r_meas_w = r_meas_w_top / r_meas_w_btm
@@ -279,7 +275,7 @@ class intensities_scaler(object):
                     )
                 )
             txt_obs_out += "Merged I, sigI: %6.2f, %6.2f\n" % (I_avg, sigI_avg)
-            txt_obs_out += "Rmeas: %6.2f Qw: %6.2f\n" % (r_meas, r_meas_w)
+            txt_obs_out += "Rmerge: %6.2f Qw: %6.2f\n" % (r_meas, r_meas_w)
             txt_obs_out += "No. total observed: %4.0f No. after rejection: %4.0f\n" % (
                 len(sin_theta_over_lambda_sq),
                 len(I_full),
@@ -1116,10 +1112,10 @@ class intensities_scaler(object):
         one_dsqr_by_bin = flex.double()
 
         csv_out = ""
-        csv_out += "Bin, Low, High, Completeness, <N_obs>, Rmeas, Qw, CC1/2, N_ind, CCiso, N_ind, CCanoma, N_ind, CCanomc, N_ind, <I/sigI>\n"
+        csv_out += "Bin, Low, High, Completeness, <N_obs>, Rmerge,Qw, CC1/2, N_ind, CCiso, N_ind, CCanoma, N_ind, CCanomc, N_ind, <I/sigI>\n"
         txt_out = "\n"
         txt_out += "Summary for " + output_mtz_file_prefix + "_merge.mtz\n"
-        txt_out += "Bin Resolution Range     Completeness      <N_obs>  |Rmeas    Qw     CC1/2   N_ind |CCiso   N_ind|CCanoma  N_ind CCanomc  N_ind| <I/sigI>   <I>\n"
+        txt_out += "Bin Resolution Range     Completeness      <N_obs>  |Rmerge   Qw     CC1/2   N_ind |CCiso   N_ind|CCanoma  N_ind CCanomc  N_ind| <I/sigI>   <I>\n"
         txt_out += "--------------------------------------------------------------------------------------------------------------------------------------------------\n"
         sum_r_meas_w_top = 0
         sum_r_meas_w_btm = 0
@@ -1326,8 +1322,8 @@ class intensities_scaler(object):
                     len(miller_indices_obs_bin),
                     len(miller_indices_bin),
                     multiplicity_bin,
-                    r_meas_bin,
-                    r_meas_w_bin,
+                    r_meas_bin * 100,
+                    r_meas_w_bin * 100,
                     cc12_bin * 100,
                     n_refl_cc12_bin,
                     cc_iso_bin * 100,
@@ -1423,8 +1419,8 @@ class intensities_scaler(object):
                 sum_refl_obs,
                 sum_refl_complete,
                 n_refl_obs_total / sum_refl_obs,
-                r_meas,
-                r_meas_w,
+                r_meas * 100,
+                r_meas_w * 100,
                 cc12 * 100,
                 len(I_even.select(i_even_filter_sel)),
                 cc_iso * 100,
