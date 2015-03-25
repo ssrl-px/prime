@@ -11,11 +11,7 @@ from libtbx.easy_mp import pool_map
 import numpy as np
 from cctbx.array_family import flex
 from datetime import datetime, time
-import logging
 import math
-
-FORMAT = "%(levelname)s %(module)s.%(funcName)s: %(message)s"
-logging.basicConfig(level=logging.WARNING, format=FORMAT)
 
 
 def determine_mean_I_mproc(frame_no, frame_files, iparams, avg_mode):
@@ -136,8 +132,6 @@ def read_pickles(data):
 
 
 if __name__ == "__main__":
-    logging.info("Starting process.")
-
     # capture starting time
     time_global_start = datetime.now()
 
@@ -387,7 +381,7 @@ if __name__ == "__main__":
 
             from prime.postrefine import write_output
 
-            miller_array_ref, txt_merge_mean, csv_merge_mean = write_output(
+            miller_array_ref, txt_merge_mean = write_output(
                 miller_indices_merge,
                 I_merge,
                 sigI_merge,
@@ -606,29 +600,29 @@ if __name__ == "__main__":
                             + txt_obs_out
                         )
                         txt_out_rejection = txt_reject_out
-                    for _i in xrange(len(miller_index)):
+                    for i in xrange(len(miller_index)):
                         if (
-                            math.isnan(stat[0][_i])
-                            or math.isinf(stat[0][_i])
-                            or math.isnan(stat[1][_i])
-                            or math.isinf(stat[1][_i])
+                            math.isnan(stat[0][i])
+                            or math.isinf(stat[0][i])
+                            or math.isnan(stat[1][i])
+                            or math.isinf(stat[1][i])
                         ):
                             dummy = 0
                         else:
-                            miller_indices_merge2.append(miller_index[_i])
-                            I_merge2.append(I_avg[_i])
-                            sigI_merge2.append(sigI_avg[_i])
+                            miller_indices_merge2.append(miller_index[i])
+                            I_merge2.append(I_avg[i])
+                            sigI_merge2.append(sigI_avg[i])
                             stat_all2.append(
                                 (
-                                    stat[0][_i],
-                                    stat[1][_i],
-                                    stat[2][_i],
-                                    stat[3][_i],
-                                    stat[4][_i],
+                                    stat[0][i],
+                                    stat[1][i],
+                                    stat[2][i],
+                                    stat[3][i],
+                                    stat[4][i],
                                 )
                             )
-                            I_even2.append(I_avg_even[_i])
-                            I_odd2.append(I_avg_odd[_i])
+                            I_even2.append(I_avg_even[i])
+                            I_odd2.append(I_avg_odd[i])
 
                 if iparams.averaging_engine == "both":
                     from libtbx.test_utils import approx_equal
@@ -689,7 +683,7 @@ if __name__ == "__main__":
 
                 from prime.postrefine import write_output
 
-                miller_array_pr, txt_merge_out, csv_out = write_output(
+                miller_array_pr, txt_merge_out = write_output(
                     miller_indices_merge,
                     I_merge,
                     sigI_merge,
