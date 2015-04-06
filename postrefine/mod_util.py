@@ -22,7 +22,7 @@ class intensities_scaler(object):
 
     def __init__(self):
         """Constructor."""
-        self.CONST_SE_MIN_WEIGHT = 0.5
+        self.CONST_SE_MIN_WEIGHT = 0.17
         self.CONST_SE_MAX_WEIGHT = 1.0
         self.CONST_SIG_I_FACTOR = 1.5
 
@@ -147,18 +147,16 @@ class intensities_scaler(object):
         # normalize the SE
         max_w = self.CONST_SE_MAX_WEIGHT
         min_w = math.sqrt(self.CONST_SE_MIN_WEIGHT)
-        SE_max = iparams.reserved.SE_max
-        SE_min = iparams.reserved.SE_min
-        if len(SE) == 1 or (SE_max - SE_min < 0.1) or avg_mode == "average":
+        if (
+            len(SE) == 1
+            or ((flex.max(SE) - flex.min(SE)) < 0.1)
+            or avg_mode == "average"
+        ):
             SE_norm = flex.double([1] * len(SE))
-            SE_std_norm = flex.double([1] * len(SE))
         else:
-            m = (max_w - min_w) / (SE_min - SE_max)
-            b = max_w - (m * SE_min)
+            m = (max_w - min_w) / (flex.min(SE) - flex.max(SE))
+            b = max_w - (m * flex.min(SE))
             SE_norm = (m * SE) + b
-            m_std = (self.CONST_SIG_I_FACTOR - 1.0) / (SE_max - SE_min)
-            b_std = 1 - (m_std * SE_min)
-            SE_std_norm = (m_std * SE) + b_std
 
         I_avg = flex.sum(SE_norm * I_full) / flex.sum(SE_norm)
         if math.isnan(I_avg):
@@ -178,11 +176,9 @@ class intensities_scaler(object):
                 )
             print
 
-        # test calculation of sigI
-        # sigI_avg = np.mean(sigI_full * SE_std_norm)
-        sigI_avg = flex.sum(SE_std_norm * sigI_full) / flex.sum(SE_std_norm)
+        sigI_avg = flex.mean(sigI_full)
 
-        # Rmerge, Rmerge_w, multiplicity
+        # Rmeas, Rmeas_w, multiplicity
         multiplicity = len(I_full)
         r_meas_w_top = 0.0
         r_meas_w_btm = 0.0
@@ -225,7 +221,7 @@ class intensities_scaler(object):
         mosaic_radian_set = 2 * (rs_set) * (wavelength_set)
 
         if iparams.flag_output_verbose:
-            txt_obs_out += "    I_o        sigI_o    G      B     Eoc      rs    lambda rocking(deg) W     Wsig     I_full     sigI_full\n"
+            txt_obs_out += "    I_o        sigI_o    G      B     Eoc      rs    lambda rocking(deg) W     I_full     sigI_full\n"
             for (
                 i_o,
                 sigi_o,
@@ -236,7 +232,6 @@ class intensities_scaler(object):
                 wavelength,
                 mosaic_radian,
                 se_norm,
-                se_std_norm,
                 i_full,
                 sigi_full,
             ) in zip(
@@ -249,12 +244,11 @@ class intensities_scaler(object):
                 wavelength_set,
                 mosaic_radian_set,
                 SE_norm,
-                SE_std_norm,
                 I_full,
                 sigI_full,
             ):
                 txt_obs_out += (
-                    "%10.2f %10.2f %6.2f %6.2f %6.2f %8.5f %8.5f %8.5f %6.2f %6.2f %10.2f %10.2f\n"
+                    "%10.2f %10.2f %6.2f %6.2f %6.2f %8.5f %8.5f %8.5f %6.2f %10.2f %10.2f\n"
                     % (
                         i_o,
                         sigi_o,
@@ -265,13 +259,12 @@ class intensities_scaler(object):
                         wavelength,
                         mosaic_radian * 180 / math.pi,
                         se_norm,
-                        se_std_norm,
                         i_full,
                         sigi_full,
                     )
                 )
             txt_obs_out += "Merged I, sigI: %6.2f, %6.2f\n" % (I_avg, sigI_avg)
-            txt_obs_out += "Rmerge: %6.2f Qw: %6.2f\n" % (r_meas, r_meas_w)
+            txt_obs_out += "Rmeas: %6.2f Qw: %6.2f\n" % (r_meas, r_meas_w)
             txt_obs_out += "No. total observed: %4.0f No. after rejection: %4.0f\n" % (
                 len(sin_theta_over_lambda_sq),
                 len(I_full),
@@ -343,8 +336,6 @@ class intensities_scaler(object):
         )
         engine.avg_mode = avg_mode_cpp
         engine.sigma_max = sigma_max
-        engine.SE_max = iparams.reserved.SE_max
-        engine.SE_min = iparams.reserved.SE_min
         engine.flag_volume_correction = iparams.flag_volume_correction
         engine.n_rejection_cycle = iparams.n_rejection_cycle
         engine.flag_output_verbose = iparams.flag_output_verbose
@@ -665,10 +656,6 @@ class intensities_scaler(object):
 
         # plot stats
         self.plot_stats(filtered_results, iparams)
-
-        # update iparams.SE_min and max
-        iparams.reserved.SE_min = flex.min(SE_all)
-        iparams.reserved.SE_max = flex.max(SE_all)
 
         # calculate average unit cell
         uc_mean, uc_med, uc_std = self.calc_mean_unit_cell(filtered_results)
@@ -1115,7 +1102,7 @@ class intensities_scaler(object):
 
         txt_out = "\n"
         txt_out += "Summary for " + output_mtz_file_prefix + "_merge.mtz\n"
-        txt_out += "Bin Resolution Range     Completeness      <N_obs>  |Rmerge  Rsplit  CC1/2   N_ind |CCiso   N_ind|CCanoma  N_ind CCanomc  N_ind| <I/sigI>   <I>\n"
+        txt_out += "Bin Resolution Range     Completeness      <N_obs>  |Rmerge    Rsplit   CC1/2   N_ind |CCiso   N_ind|CCanoma  N_ind CCanomc  N_ind| <I/sigI>   <I>\n"
         txt_out += "--------------------------------------------------------------------------------------------------------------------------------------------------\n"
         sum_r_meas_w_top = 0
         sum_r_meas_w_btm = 0
