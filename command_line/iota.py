@@ -257,8 +257,8 @@ if __name__ == "__main__":
     )
 
     # debugging/experimental section - anything goes here
-    if gs_params.advanced.debug:
-        sys.exit()
+    # if gs_params.advanced.debug:
+    #  sys.exit()
 
     # run grid search
     if gs_params.grid_search.flag_on:
