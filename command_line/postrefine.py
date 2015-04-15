@@ -306,23 +306,29 @@ if __name__ == "__main__":
                         "Mean-scaled partiality-corrected set\n" + txt_obs_out
                     )
                     txt_out_rejection = txt_reject_out
-                for i in xrange(len(miller_index)):
+                for _i in xrange(len(miller_index)):
                     if (
-                        math.isnan(stat[0][i])
-                        or math.isinf(stat[0][i])
-                        or math.isnan(stat[1][i])
-                        or math.isinf(stat[1][i])
+                        math.isnan(stat[0][_i])
+                        or math.isinf(stat[0][_i])
+                        or math.isnan(stat[1][_i])
+                        or math.isinf(stat[1][_i])
                     ):
                         dummy = 0
                     else:
-                        miller_indices_merge2.append(miller_index[i])
-                        I_merge2.append(I_avg[i])
-                        sigI_merge2.append(sigI_avg[i])
+                        miller_indices_merge2.append(miller_index[_i])
+                        I_merge2.append(I_avg[_i])
+                        sigI_merge2.append(sigI_avg[_i])
                         stat_all2.append(
-                            (stat[0][i], stat[1][i], stat[2][i], stat[3][i], stat[4][i])
+                            (
+                                stat[0][_i],
+                                stat[1][_i],
+                                stat[2][_i],
+                                stat[3][_i],
+                                stat[4][_i],
+                            )
                         )
-                        I_even2.append(I_avg_even[i])
-                        I_odd2.append(I_avg_odd[i])
+                        I_even2.append(I_avg_even[_i])
+                        I_odd2.append(I_avg_odd[_i])
 
             if iparams.averaging_engine == "both":
                 from libtbx.test_utils import approx_equal
@@ -600,29 +606,29 @@ if __name__ == "__main__":
                             + txt_obs_out
                         )
                         txt_out_rejection = txt_reject_out
-                    for i in xrange(len(miller_index)):
+                    for _i in xrange(len(miller_index)):
                         if (
-                            math.isnan(stat[0][i])
-                            or math.isinf(stat[0][i])
-                            or math.isnan(stat[1][i])
-                            or math.isinf(stat[1][i])
+                            math.isnan(stat[0][_i])
+                            or math.isinf(stat[0][_i])
+                            or math.isnan(stat[1][_i])
+                            or math.isinf(stat[1][_i])
                         ):
                             dummy = 0
                         else:
-                            miller_indices_merge2.append(miller_index[i])
-                            I_merge2.append(I_avg[i])
-                            sigI_merge2.append(sigI_avg[i])
+                            miller_indices_merge2.append(miller_index[_i])
+                            I_merge2.append(I_avg[_i])
+                            sigI_merge2.append(sigI_avg[_i])
                             stat_all2.append(
                                 (
-                                    stat[0][i],
-                                    stat[1][i],
-                                    stat[2][i],
-                                    stat[3][i],
-                                    stat[4][i],
+                                    stat[0][_i],
+                                    stat[1][_i],
+                                    stat[2][_i],
+                                    stat[3][_i],
+                                    stat[4][_i],
                                 )
                             )
-                            I_even2.append(I_avg_even[i])
-                            I_odd2.append(I_avg_odd[i])
+                            I_even2.append(I_avg_even[_i])
+                            I_odd2.append(I_avg_odd[_i])
 
                 if iparams.averaging_engine == "both":
                     from libtbx.test_utils import approx_equal
