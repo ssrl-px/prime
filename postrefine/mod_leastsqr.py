@@ -33,9 +33,9 @@ from cctbx.crystal_orientation import crystal_orientation, basis_type
 def calc_full_refl(
     I_o_p_set, sin_theta_over_lambda_sq_set, G, B, p_set, rs_set, flag_volume_correction
 ):
-    I_o_full_set = (
-        G * np.exp(-2 * B * sin_theta_over_lambda_sq_set) * I_o_p_set
-    ) / p_set
+    I_o_full_set = I_o_p_set / (
+        G * np.exp(-2 * B * sin_theta_over_lambda_sq_set) * p_set
+    )
     if flag_volume_correction:
         I_o_full_set = I_o_full_set * (4 / 3) * (rs_set)
 
@@ -56,8 +56,7 @@ def calc_spot_radius(a_star_matrix, miller_indices, wavelength):
         delta_S_all.append(delta_S)
 
     # spot_radius = math.sqrt(flex.mean(delta_S_all*delta_S_all))
-    spot_radius = np.std(delta_S_all) * 1
-
+    spot_radius = np.std(delta_S_all)
     return spot_radius
 
 
@@ -112,9 +111,9 @@ def calc_partiality_anisotropy_set(
         if flag_beam_divergence:
             rs = math.sqrt(
                 (ry * math.cos(alpha_angle)) ** 2 + (rz * math.sin(alpha_angle)) ** 2
-            ) + (abs(r0) + (abs(re) * math.tan(bragg_angle)))
+            ) + (r0 + (re * math.tan(bragg_angle)))
         else:
-            rs = abs(r0) + (abs(re) * math.tan(bragg_angle))
+            rs = r0 + (re * math.tan(bragg_angle))
         h = col(miller_index)
         x = A_star * h
         S = x + S0
@@ -1311,182 +1310,117 @@ class leastsqr_handler(object):
             print "CCref = %.4g" % (CC_final)
             print "CCiso = %.4g" % (CC_iso_final)
 
-            plt.subplot(221)
-            plt.scatter(I_r_flex, I_o_init, s=10, marker="x", c="r")
-            plt.title("CCinit=%5.2f Rinit=%5.2f" % (CC_init, R_init))
-            plt.xlabel("I_ref")
-            plt.ylabel("I_obs")
-            plt.subplot(222)
-            plt.scatter(I_r_flex, I_o_fin, s=10, marker="o", c="b")
-            plt.title("CCfinal=%5.2f Rfinal=%5.2f" % (CC_final, R_final))
-            plt.xlabel("I_ref")
-            plt.ylabel("I_obs")
+            """
+      plt.subplot(221)
+      plt.scatter(I_r_flex, I_o_init,s=10, marker='x', c='r')
+      plt.title('CCinit=%5.2f Rinit=%5.2f'%(CC_init, R_init))
+      plt.xlabel('I_ref')
+      plt.ylabel('I_obs')
+      plt.subplot(222)
+      plt.scatter(I_r_flex, I_o_fin,s=10, marker='o', c='b')
+      plt.title('CCfinal=%5.2f Rfinal=%5.2f'%(CC_final, R_final))
+      plt.xlabel('I_ref')
+      plt.ylabel('I_obs')
 
-            n_bins = 16
-            binner = observations_original.setup_binner(n_bins=n_bins)
-            binner_indices = binner.bin_indices()
-            avg_delta_xy_init = flex.double()
-            avg_delta_xy_fin = flex.double()
-            avg_partiality_init = flex.double()
-            avg_partiality_fin = flex.double()
-            avg_rh_init = flex.double()
-            avg_rh_fin = flex.double()
-            one_dsqr_bin = flex.double()
-            for i in range(1, n_bins + 1):
-                i_binner = binner_indices == i
-                if len(observations_original.data().select(i_binner)) > 0:
-                    avg_delta_xy_init.append(np.mean(delta_xy_init.select(i_binner)))
-                    avg_delta_xy_fin.append(np.mean(delta_xy_fin.select(i_binner)))
+      n_bins = 16
+      binner = observations_original.setup_binner(n_bins=n_bins)
+      binner_indices = binner.bin_indices()
+      avg_delta_xy_init = flex.double()
+      avg_delta_xy_fin = flex.double()
+      avg_partiality_init = flex.double()
+      avg_partiality_fin = flex.double()
+      avg_rh_init = flex.double()
+      avg_rh_fin = flex.double()
+      one_dsqr_bin = flex.double()
+      for i in range(1,n_bins+1):
+        i_binner = (binner_indices == i)
+        if len(observations_original.data().select(i_binner)) > 0:
+          avg_delta_xy_init.append(np.mean(delta_xy_init.select(i_binner)))
+          avg_delta_xy_fin.append(np.mean(delta_xy_fin.select(i_binner)))
 
-                    avg_partiality_init.append(
-                        np.mean(partiality_init.select(i_binner))
-                    )
-                    avg_partiality_fin.append(np.mean(partiality_fin.select(i_binner)))
+          avg_partiality_init.append(np.mean(partiality_init.select(i_binner)))
+          avg_partiality_fin.append(np.mean(partiality_fin.select(i_binner)))
 
-                    avg_rh_init.append(np.mean(flex.abs(rh_init.select(i_binner))))
-                    avg_rh_fin.append(np.mean(flex.abs(rh_fin.select(i_binner))))
+          avg_rh_init.append(np.mean(flex.abs(rh_init.select(i_binner))))
+          avg_rh_fin.append(np.mean(flex.abs(rh_fin.select(i_binner))))
 
-                    one_dsqr_bin.append(1 / binner.bin_d_range(i)[1] ** 2)
+          one_dsqr_bin.append(1/binner.bin_d_range(i)[1]**2)
 
-            plt.subplot(223)
-            plt.plot(
-                one_dsqr_bin,
-                avg_delta_xy_init,
-                linestyle="-",
-                linewidth=2.0,
-                c="r",
-                label="Initial <delta_xy>=%4.2f" % np.mean(delta_xy_init),
-            )
-            plt.plot(
-                one_dsqr_bin,
-                avg_delta_xy_fin,
-                linestyle="-",
-                linewidth=2.0,
-                c="b",
-                label="Final <delta_xy>=%4.2f" % np.mean(delta_xy_fin),
-            )
-            legend = plt.legend(loc="upper left", shadow=False)
-            for label in legend.get_texts():
-                label.set_fontsize("medium")
-            plt.title("Distance (delta_xy) from spot centroid")
-            plt.xlabel("1/(d^2)")
-            plt.ylabel("(mm)")
+      plt.subplot(223)
+      plt.plot(one_dsqr_bin, avg_delta_xy_init, linestyle='-', linewidth=2.0, c='r', label='Initial <delta_xy>=%4.2f'%np.mean(delta_xy_init))
+      plt.plot(one_dsqr_bin, avg_delta_xy_fin, linestyle='-', linewidth=2.0, c='b', label='Final <delta_xy>=%4.2f'%np.mean(delta_xy_fin))
+      legend = plt.legend(loc='upper left', shadow=False)
+      for label in legend.get_texts():
+        label.set_fontsize('medium')
+      plt.title('Distance (delta_xy) from spot centroid')
+      plt.xlabel('1/(d^2)')
+      plt.ylabel('(mm)')
 
-            plt.subplot(224)
-            one_dsqr = 1 / (observations_original.d_spacings().data() ** 2)
-            perm = flex.sort_permutation(one_dsqr, reverse=True)
-            one_dsqr_sort = one_dsqr.select(perm)
-            rs_fin_sort = rs_fin.select(perm)
-            rs_init_sort = rs_init.select(perm)
-            plt.plot(
-                one_dsqr_sort,
-                rs_init_sort,
-                linestyle="-",
-                linewidth=2.0,
-                c="r",
-                label="Initial ry=%.4g ry=%.4g r0=%.4g re=%.4g"
-                % (0, 0, spot_radius, self.gamma_e),
-            )
-            plt.plot(
-                one_dsqr_sort,
-                rs_fin_sort,
-                linestyle="-",
-                linewidth=2.0,
-                c="b",
-                label="Final ry=%.4g ry=%.4g r0=%.4g re=%.4g" % (ry, rz, r0, re),
-            )
-            legend = plt.legend(loc="lower right", shadow=False)
-            for label in legend.get_texts():
-                label.set_fontsize("medium")
-            plt.title("Reciprocal lattice radius (r_s)")
-            plt.xlabel("1/(d^2)")
-            plt.ylabel("1/Angstroms")
-            plt.show()
+      plt.subplot(224)
+      one_dsqr = 1/(observations_original.d_spacings().data()**2)
+      perm = flex.sort_permutation(one_dsqr, reverse=True)
+      one_dsqr_sort = one_dsqr.select(perm)
+      rs_fin_sort = rs_fin.select(perm)
+      rs_init_sort = rs_init.select(perm)
+      plt.plot(one_dsqr_sort, rs_init_sort, linestyle='-', linewidth=2.0, c='r',
+                           label='Initial ry=%.4g ry=%.4g r0=%.4g re=%.4g'%(0,0,
+                                                                            spot_radius,self.gamma_e))
+      plt.plot(one_dsqr_sort, rs_fin_sort, linestyle='-', linewidth=2.0, c='b',
+               label='Final ry=%.4g ry=%.4g r0=%.4g re=%.4g'%(ry,rz,r0,re))
+      legend = plt.legend(loc='lower right', shadow=False)
+      for label in legend.get_texts():
+        label.set_fontsize('medium')
+      plt.title('Reciprocal lattice radius (r_s)')
+      plt.xlabel('1/(d^2)')
+      plt.ylabel('1/Angstroms')
+      plt.show()
 
-            # plot partiality (histogram and function of resolutions).
-            plt.subplot(221)
-            x = partiality_init.as_numpy_array()
-            mu = np.mean(x)
-            med = np.median(x)
-            sigma = np.std(x)
-            num_bins = 10
-            n, bins, patches = plt.hist(
-                x, num_bins, normed=1, facecolor="green", alpha=0.5
-            )
-            y = mlab.normpdf(bins, mu, sigma)
-            plt.plot(bins, y, "r--")
-            plt.ylabel("Frequencies")
-            plt.title(
-                "Partiality before\nmean %5.3f median %5.3f sigma %5.3f"
-                % (mu, med, sigma)
-            )
+      #plot partiality (histogram and function of resolutions).
+      plt.subplot(221)
+      x = partiality_init.as_numpy_array()
+      mu = np.mean(x)
+      med = np.median(x)
+      sigma = np.std(x)
+      num_bins = 10
+      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
+      y = mlab.normpdf(bins, mu, sigma)
+      plt.plot(bins, y, 'r--')
+      plt.ylabel('Frequencies')
+      plt.title('Partiality before\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
 
-            plt.subplot(222)
-            x = partiality_fin.as_numpy_array()
-            mu = np.mean(x)
-            med = np.median(x)
-            sigma = np.std(x)
-            num_bins = 10
-            n, bins, patches = plt.hist(
-                x, num_bins, normed=1, facecolor="green", alpha=0.5
-            )
-            y = mlab.normpdf(bins, mu, sigma)
-            plt.plot(bins, y, "r--")
-            plt.ylabel("Frequencies")
-            plt.title(
-                "Partiality after\nmean %5.3f median %5.3f sigma %5.3f"
-                % (mu, med, sigma)
-            )
+      plt.subplot(222)
+      x = partiality_fin.as_numpy_array()
+      mu = np.mean(x)
+      med = np.median(x)
+      sigma = np.std(x)
+      num_bins = 10
+      n, bins, patches = plt.hist(x, num_bins, normed=1, facecolor='green', alpha=0.5)
+      y = mlab.normpdf(bins, mu, sigma)
+      plt.plot(bins, y, 'r--')
+      plt.ylabel('Frequencies')
+      plt.title('Partiality after\nmean %5.3f median %5.3f sigma %5.3f' %(mu, med, sigma))
 
-            plt.subplot(223)
-            plt.plot(
-                one_dsqr_bin,
-                avg_partiality_init,
-                linestyle="-",
-                linewidth=2.0,
-                c="r",
-                label="Initial ",
-            )
-            plt.plot(
-                one_dsqr_bin,
-                avg_partiality_fin,
-                linestyle="-",
-                linewidth=2.0,
-                c="b",
-                label="Final ",
-            )
-            legend = plt.legend(loc="lower left", shadow=False)
-            for label in legend.get_texts():
-                label.set_fontsize("medium")
-            plt.title("Partiality")
-            plt.xlabel("1/(d^2)")
-            plt.ylabel("(mm)")
+      plt.subplot(223)
+      plt.plot(one_dsqr_bin, avg_partiality_init, linestyle='-', linewidth=2.0, c='r', label='Initial ')
+      plt.plot(one_dsqr_bin, avg_partiality_fin, linestyle='-', linewidth=2.0, c='b', label='Final ')
+      legend = plt.legend(loc='lower left', shadow=False)
+      for label in legend.get_texts():
+        label.set_fontsize('medium')
+      plt.title('Partiality')
+      plt.xlabel('1/(d^2)')
+      plt.ylabel('(mm)')
 
-            plt.subplot(224)
-            plt.plot(
-                one_dsqr_bin,
-                avg_rh_init,
-                linestyle="-",
-                linewidth=2.0,
-                c="r",
-                label="Initial ",
-            )
-            plt.plot(
-                one_dsqr_bin,
-                avg_rh_fin,
-                linestyle="-",
-                linewidth=2.0,
-                c="b",
-                label="Final ",
-            )
-            legend = plt.legend(loc="lower left", shadow=False)
-            for label in legend.get_texts():
-                label.set_fontsize("medium")
-            plt.title("Ewald-sphere offset (r_h)")
-            plt.xlabel("1/(d^2)")
-            plt.ylabel("1/Angstrom")
-            plt.show()
-
+      plt.subplot(224)
+      plt.plot(one_dsqr_bin, avg_rh_init, linestyle='-', linewidth=2.0, c='r', label='Initial ')
+      plt.plot(one_dsqr_bin, avg_rh_fin, linestyle='-', linewidth=2.0, c='b', label='Final ')
+      legend = plt.legend(loc='lower left', shadow=False)
+      for label in legend.get_texts():
+        label.set_fontsize('medium')
+      plt.title('Ewald-sphere offset (r_h)')
+      plt.xlabel('1/(d^2)')
+      plt.ylabel('1/Angstrom')
+      plt.show()
+      """
         xopt = (G, B, rotx, roty, ry, rz, r0, re, a, b, c, alpha, beta, gamma)
 
         return (
