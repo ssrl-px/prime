@@ -523,7 +523,7 @@ class intensities_scaler(object):
             SE_med,
             SE_std,
         )
-        txt_out += " G:                        %12.2f %12.2f (%9.2f)\n" % (
+        txt_out += " G:                        %12.4f %12.4f (%9.4f)\n" % (
             G_mean,
             G_med,
             G_std,
