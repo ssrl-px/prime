@@ -1277,6 +1277,8 @@ class leastsqr_handler(object):
             iparams,
             observations_original,
         )
+
+        # calculate stats
         SE_of_the_estimate = standard_error_of_the_estimate(I_r_flex, I_o_fin, 13)
         R_sq = coefficient_of_determination(I_r_flex, I_o_fin) * 100
 

@@ -13,6 +13,7 @@ import matplotlib.mlab as mlab
 from libtbx.utils import Sorry
 from cctbx.uctbx import unit_cell
 from cctbx import statistics
+from iotbx import reflection_file_reader
 
 
 class intensities_scaler(object):
@@ -27,6 +28,35 @@ class intensities_scaler(object):
         self.CONST_SE_MIN_WEIGHT = 0.17
         self.CONST_SE_MAX_WEIGHT = 1.0
         self.CONST_SIG_I_FACTOR = 1.5
+
+    def get_miller_array_from_mtz(self, mtz_filename):
+        flag_hklisoin_found = False
+        miller_array_iso = None
+        if mtz_filename is not None:
+            flag_hklisoin_found = True
+            reflection_file_iso = reflection_file_reader.any_reflection_file(
+                mtz_filename
+            )
+            miller_arrays_iso = reflection_file_iso.as_miller_arrays()
+            is_found_iso_as_intensity_array = False
+            is_found_iso_as_amplitude_array = False
+            for miller_array in miller_arrays_iso:
+                if miller_array.is_xray_intensity_array():
+                    miller_array_iso = miller_array.deep_copy()
+                    is_found_iso_as_intensity_array = True
+                    break
+                elif miller_array.is_xray_amplitude_array():
+                    is_found_iso_as_amplitude_array = True
+                    miller_array_converted_to_intensity = (
+                        miller_array.as_intensity_array()
+                    )
+            if is_found_iso_as_intensity_array == False:
+                if is_found_iso_as_amplitude_array:
+                    miller_array_iso = miller_array_converted_to_intensity.deep_copy()
+                else:
+                    flag_hklisoin_found = False
+
+        return flag_hklisoin_found, miller_array_iso
 
     def calc_avg_I_cpp(
         self,
@@ -272,6 +302,43 @@ class intensities_scaler(object):
             pr_params_std
         )
 
+        # get isomtz for wilson plot
+        flag_hklisoin_found, miller_array_iso = self.get_miller_array_from_mtz(
+            iparams.hklisoin
+        )
+        one_dsqr_flex = flex.double()
+        data_iso_flex = flex.double()
+        data_expected_flex = flex.double()
+        if flag_hklisoin_found:
+            miller_array_iso = miller_array_iso.resolution_filter(
+                d_min=iparams.merge.d_min, d_max=iparams.merge.d_max
+            )
+            binner = miller_array_iso.setup_binner(n_bins=iparams.n_bins)
+            mean_I = miller_array_iso.mean(use_binning=True)
+            for i_bin in range(binner.n_bins_used()):
+                one_dsqr_flex.append(1 / binner.bin_d_range(i_bin + 1)[1] ** 2)
+                data_iso_flex.append(mean_I.data[i_bin + 1])
+
+            # get expected intensity
+            asu_contents = {}
+            if iparams.n_residues is None:
+                asu_volume = miller_array_iso.unit_cell().volume() / float(
+                    miller_array_iso.space_group().order_z()
+                )
+                number_carbons = asu_volume / 18.0
+            else:
+                number_carbons = n_residues * 5.35
+            asu_contents.setdefault("C", number_carbons)
+            miller_array_iso_as_f = miller_array_iso.as_amplitude_array()
+            miller_array_iso_as_f.use_binning_of(miller_array_iso)
+            try:
+                wp = statistics.wilson_plot(
+                    miller_array_iso_as_f, asu_contents, e_statistics=True
+                )
+                data_expected_flex = wp.expected_f_sq
+            except Exception:
+                pass
+
         # prepare data for merging
         miller_indices_all = flex.miller_index()
         miller_indices_ori_all = flex.miller_index()
@@ -292,7 +359,8 @@ class intensities_scaler(object):
         R_xy_final_all = flex.double()
         pickle_filename_all = []
         filtered_results = []
-        cn_good_frame, cn_bad_frame_SE, cn_bad_frame_uc, cn_bad_frame_cc, cn_bad_frame_G, cn_bad_frame_re = (
+        cn_good_frame, cn_bad_frame_SE, cn_bad_frame_uc, cn_bad_frame_cc, cn_bad_frame_G, cn_bad_frame_re, cn_bad_frame_B = (
+            0,
             0,
             0,
             0,
@@ -301,6 +369,7 @@ class intensities_scaler(object):
             0,
         )
         i_seq = flex.int()
+        mean_I_scaled_set = []
         for pres in results:
             if pres is not None:
                 pickle_filepath = pres.pickle_filename.split("/")
@@ -310,15 +379,18 @@ class intensities_scaler(object):
                 # check SE, CC, UC, G, B, gamma_e
                 if math.isnan(pres.G):
                     flag_pres_ok = False
+                    cn_bad_frame_G += 1
 
                 if math.isnan(pres.SE) or np.isinf(pres.SE):
                     flag_pres_ok = False
+                    cn_bad_frame_SE += 1
 
-                if flag_pres_ok and SE_med > 0:
-                    if abs(pres.SE - SE_med) / SE_std > std_filter:
-                        flag_pres_ok = False
-                        cn_bad_frame_SE += 1
-
+                """
+        if flag_pres_ok and SE_med > 0:
+          if abs(pres.SE-SE_med)/SE_std > std_filter:
+            flag_pres_ok = False
+            cn_bad_frame_SE += 1
+        """
                 if flag_pres_ok and pres.CC_final < cc_thres:
                     flag_pres_ok = False
                     cn_bad_frame_cc += 1
@@ -328,6 +400,12 @@ class intensities_scaler(object):
                         if abs(pres.G - G_med) / G_std > std_filter:
                             flag_pres_ok = False
                             cn_bad_frame_G += 1
+
+                if flag_pres_ok:
+                    if B_std > 0:
+                        if abs(pres.B - B_med) / B_std > std_filter:
+                            flag_pres_ok = False
+                            cn_bad_frame_B += 1
 
                 if flag_pres_ok:
                     if re_std > 0:
@@ -387,6 +465,72 @@ class intensities_scaler(object):
                             ]
                         )
                     )
+
+                    if iparams.flag_plot and flag_hklisoin_found:
+                        # scaling the intensity for wilson plot
+                        try:
+                            I_scaled = flex.double(
+                                pres.observations.data()
+                                / (
+                                    pres.G
+                                    * np.exp(-2 * pres.B * sin_theta_over_lambda_sq)
+                                    * pres.partiality
+                                )
+                            )
+                            sigI_scaled = flex.double(
+                                pres.observations.sigmas()
+                                / (
+                                    pres.G
+                                    * np.exp(-2 * pres.B * sin_theta_over_lambda_sq)
+                                    * pres.partiality
+                                )
+                            )
+                            observations_scaled = pres.observations.customized_copy(
+                                data=I_scaled, sigmas=sigI_scaled
+                            )
+                            observations_scaled.use_binning_of(miller_array_iso)
+                            mean_I_scaled = observations_scaled.mean(use_binning=True)
+                            data_scaled_flex = flex.double([0] * binner.n_bins_used())
+                            for i_bin in range(binner.n_bins_used()):
+                                if mean_I_scaled.data[i_bin + 1] is not None:
+                                    data_scaled_flex[i_bin] = mean_I_scaled.data[
+                                        i_bin + 1
+                                    ]
+                            mean_I_scaled_set.append(data_scaled_flex)
+                        except Exception:
+                            pass
+
+        if iparams.flag_plot and len(mean_I_scaled_set) > 0:
+            for data_flex in mean_I_scaled_set:
+                plt.plot(
+                    one_dsqr_flex,
+                    flex.log(data_flex),
+                    linestyle="-",
+                    linewidth=2.0,
+                    c="b",
+                )
+            plt.plot(
+                one_dsqr_flex,
+                flex.log(data_iso_flex),
+                linestyle="-",
+                linewidth=2.0,
+                c="r",
+            )
+            plt.plot(
+                one_dsqr_flex,
+                flex.log(data_expected_flex),
+                linestyle="-",
+                linewidth=2.0,
+                c="g",
+            )
+            plt.title(
+                "Wilson plot by frame after scaling ("
+                + str(len(mean_I_scaled_set))
+                + " frames)"
+            )
+            plt.xlabel("1/(d^2)")
+            plt.ylabel("Log <I>")
+            plt.show()
 
         # plot stats
         self.plot_stats(filtered_results, iparams)
@@ -471,36 +615,45 @@ class intensities_scaler(object):
             tally[elem] += 1
         cn_group = len(tally)
 
+        # calculate mean target changes
+        r_mean_change, r_xy_mean_change, r_med_change, r_xy_med_change = (0, 0, 0, 0)
+        try:
+            r_mean_change = (
+                (np.mean(R_final_all) - np.mean(R_init_all)) / np.mean(R_init_all)
+            ) * 100
+            r_xy_mean_change = (
+                (np.mean(R_xy_final_all) - np.mean(R_xy_init_all))
+                / np.mean(R_xy_init_all)
+            ) * 100
+            r_med_change = (
+                (np.median(R_final_all) - np.median(R_init_all)) / np.median(R_init_all)
+            ) * 100
+            r_xy_med_change = (
+                (np.median(R_xy_final_all) - np.median(R_xy_init_all))
+                / np.median(R_xy_init_all)
+            ) * 100
+        except Exception:
+            pass
+
         txt_out = "Summary of refinement and merging\n"
         txt_out += " No. good frames:          %12.0f\n" % (cn_good_frame)
         txt_out += " No. bad cc frames:        %12.0f\n" % (cn_bad_frame_cc)
-        txt_out += " No. bad G frames) :       %12.0f\n" % (cn_bad_frame_G)
+        txt_out += " No. bad G frames:         %12.0f\n" % (cn_bad_frame_G)
+        txt_out += " No. bad B frames:         %12.0f\n" % (cn_bad_frame_B)
         txt_out += " No. bad unit cell frames: %12.0f\n" % (cn_bad_frame_uc)
         txt_out += " No. bad gamma_e frames:   %12.0f\n" % (cn_bad_frame_re)
         txt_out += " No. bad SE:               %12.0f\n" % (cn_bad_frame_SE)
-        txt_out += " No. observations:         %12.0f\n" % (len(I_obs_all_sort))
-        txt_out += "Mean target value (BEFORE: Mean Median (Std.))\n"
-        txt_out += " post-refinement:          %12.2f %12.2f (%9.2f)\n" % (
-            np.mean(R_init_all),
-            np.median(R_init_all),
-            np.std(R_init_all),
+        txt_out += " No. observations:         %12.0f\n\n" % (len(I_obs_all_sort))
+        txt_out += "%Change in target values (Mean & Median - negative value shows residual improvement)\n"
+        txt_out += " post-refinement:          %12.2f%% %12.2f%%\n" % (
+            r_mean_change,
+            r_med_change,
         )
-        txt_out += " (x,y) restraints:         %12.2f %12.2f (%9.2f)\n" % (
-            np.mean(R_xy_init_all),
-            np.median(R_xy_init_all),
-            np.std(R_xy_init_all),
+        txt_out += " (x,y) restraints:         %12.2f%% %12.2f%%\n\n" % (
+            r_xy_mean_change,
+            r_xy_med_change,
         )
-        txt_out += "Mean target value (AFTER: Mean Median (Std.))\n"
-        txt_out += " post-refinement:          %12.2f %12.2f (%9.2f)\n" % (
-            np.mean(R_final_all),
-            np.median(R_final_all),
-            np.std(R_final_all),
-        )
-        txt_out += " (x,y) restraints:         %12.2f %12.2f (%9.2f)\n" % (
-            np.mean(R_xy_final_all),
-            np.median(R_xy_final_all),
-            np.std(R_xy_final_all),
-        )
+        txt_out += "Summary of refined parameters (Mean Median (Std.))\n"
         txt_out += " SE:                       %12.2f %12.2f (%9.2f)\n" % (
             SE_mean,
             SE_med,
@@ -577,7 +730,6 @@ class intensities_scaler(object):
             uc_med[5],
             uc_std[5],
         )
-        txt_out += "* (standard deviation)\n"
 
         return (
             cn_group,
@@ -754,32 +906,9 @@ class intensities_scaler(object):
             )
 
         # get iso if given
-        flag_hklisoin_found = False
-        if iparams.hklisoin is not None:
-            flag_hklisoin_found = True
-            from iotbx import reflection_file_reader
-
-            reflection_file_iso = reflection_file_reader.any_reflection_file(
-                iparams.hklisoin
-            )
-            miller_arrays_iso = reflection_file_iso.as_miller_arrays()
-            is_found_iso_as_intensity_array = False
-            is_found_iso_as_amplitude_array = False
-            for miller_array in miller_arrays_iso:
-                if miller_array.is_xray_intensity_array():
-                    miller_array_iso = miller_array.deep_copy()
-                    is_found_iso_as_intensity_array = True
-                    break
-                elif miller_array.is_xray_amplitude_array():
-                    is_found_iso_as_amplitude_array = True
-                    miller_array_converted_to_intensity = (
-                        miller_array.as_intensity_array()
-                    )
-            if is_found_iso_as_intensity_array == False:
-                if is_found_iso_as_amplitude_array:
-                    miller_array_iso = miller_array_converted_to_intensity.deep_copy()
-                else:
-                    flag_hklisoin_found = False
+        flag_hklisoin_found, miller_array_iso = self.get_miller_array_from_mtz(
+            iparams.hklisoin
+        )
 
         # write output files
         if output_mtz_file_prefix != "":
@@ -861,9 +990,7 @@ class intensities_scaler(object):
         )
         binner_template_asu_indices = binner_template_asu.bin_indices()
 
-        txt_out = "\n"
-        txt_out += " No. reflections:          %12.0f\n" % (n_refl_res_filtered)
-        txt_out += " No. outliers:             %12.0f\n" % (n_refl_removed_as_outlier)
+        txt_out = ""
         txt_out += "Summary for " + output_mtz_file_prefix + "_merge.mtz\n"
         txt_out += (
             "Bin Resolution Range     Completeness      <N_obs> |Rmerge  Rsplit   CC1/2   N_ind |CCiso   N_ind|CCanoma  N_ind| <"
@@ -1176,9 +1303,7 @@ class intensities_scaler(object):
 
             # calculate CCiso
             cc_iso_bin = 0
-            r_iso_bin = 0
             n_refl_cciso_bin = 0
-
             if flag_hklisoin_found:
                 matches_iso = miller.match_multi_indices(
                     miller_indices_unique=miller_array_iso.indices(),
@@ -1198,27 +1323,10 @@ class intensities_scaler(object):
                 if len(matches_iso.pairs()) > 0:
                     cc_iso_bin = np.corrcoef(I_merge_match_iso, I_iso)[0, 1]
 
-                    # calculate r_iso (need to find slope and intercept)
-                    from scipy import stats
-
-                    slope, intercept, r_value, p_value, std_err = stats.linregress(
-                        I_iso, I_merge_match_iso
-                    )
-                    r_iso_bin = (
-                        np.sum(
-                            (
-                                (I_merge_match_iso - ((slope * I_iso) + intercept))
-                                / sigI_merge_match_iso
-                            )
-                            ** 2
-                        )
-                        * math.sqrt(n_refl_cciso_bin / (max(1, n_refl_cciso_bin - 1)))
-                    ) / flex.sum((I_merge_match_iso / sigI_merge_match_iso) ** 2)
-
             mean_I_sq_list.append(mean_I_sq_bin)
 
             txt_out += (
-                "%02d %7.2f - %7.2f %5.1f %6.0f / %6.0f %7.2f %7.2f %7.2f %7.2f %6.0f %7.2f %6.0f %7.2f %6.0f %9.2f %.3e %.3e %6.2f"
+                "%02d %7.2f - %7.2f %5.1f %6.0f / %6.0f %7.2f %7.2f %7.2f %7.2f %6.0f %7.2f %6.0f %7.2f %6.0f %9.2f %8.2f %8.2f %6.2f"
                 % (
                     i,
                     binner_template_asu.bin_d_range(i)[0],
@@ -1265,21 +1373,7 @@ class intensities_scaler(object):
             if len(matches_iso.pairs()) > 0:
                 cc_iso = np.corrcoef(I_merge_match_iso, I_iso)[0, 1]
                 n_refl_iso = len(matches_iso.pairs())
-                from scipy import stats
 
-                slope, intercept, r_value, p_value, std_err = stats.linregress(
-                    I_iso, I_merge_match_iso
-                )
-                r_iso = (
-                    np.sum(
-                        (
-                            (I_merge_match_iso - ((slope * I_iso) + intercept))
-                            / sigI_merge_match_iso
-                        )
-                        ** 2
-                    )
-                    * math.sqrt(n_refl_cciso_bin / (n_refl_cciso_bin - 1))
-                ) / flex.sum((I_merge_match_iso / sigI_merge_match_iso) ** 2)
             if iparams.flag_plot:
                 plt.scatter(I_iso, I_merge_match_iso, s=10, marker="x", c="r")
                 plt.title("CC=%.4g" % (cc_iso))
@@ -1325,7 +1419,7 @@ class intensities_scaler(object):
 
         txt_out += "---------------------------------------------------------------------------------------------------------------------------------------------------\n"
         txt_out += (
-            "        TOTAL        %5.1f %6.0f / %6.0f %7.2f %7.2f %7.2f %7.2f %6.0f %7.2f %6.0f %7.2f %6.0f %9.2f %.3e %.3e %6.2f\n"
+            "        TOTAL        %5.1f %6.0f / %6.0f %7.2f %7.2f %7.2f %7.2f %6.0f %7.2f %6.0f %7.2f %6.0f %9.2f %8.2f %8.2f %6.2f\n"
             % (
                 (sum_refl_obs / sum_refl_complete) * 100,
                 sum_refl_obs,
@@ -1410,6 +1504,10 @@ class intensities_scaler(object):
         )
         txt_out += "-------------------------------------------------------------------------------------------------------------------------------\n"
         txt_out += "\n"
+
+        txt_out += "Summary of outlier rejections\n"
+        txt_out += " No. reflections:          %12.0f\n" % (n_refl_res_filtered)
+        txt_out += " No. outliers:             %12.0f\n" % (n_refl_removed_as_outlier)
 
         return miller_array_merge_intermediate, txt_out
 
