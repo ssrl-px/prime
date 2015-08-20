@@ -13,7 +13,6 @@ import matplotlib.mlab as mlab
 from libtbx.utils import Sorry
 from cctbx.uctbx import unit_cell
 from cctbx import statistics
-from iotbx import reflection_file_reader
 
 
 class intensities_scaler(object):
@@ -327,7 +326,7 @@ class intensities_scaler(object):
                 )
                 number_carbons = asu_volume / 18.0
             else:
-                number_carbons = n_residues * 5.35
+                number_carbons = iparams.n_residues * 5.35
             asu_contents.setdefault("C", number_carbons)
             miller_array_iso_as_f = miller_array_iso.as_amplitude_array()
             miller_array_iso_as_f.use_binning_of(miller_array_iso)
