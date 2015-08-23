@@ -141,7 +141,7 @@ def calc_partiality_anisotropy_set(
         spot_pred_x_mm_set,
         spot_pred_y_mm_set,
     ):
-        if flag_beam_divergence:
+        if flag_beam_divergence and alpha_angle != 0:
             rs = math.sqrt(
                 (ry * math.cos(alpha_angle)) ** 2 + (rz * math.sin(alpha_angle)) ** 2
             ) + (r0 + (re * math.tan(bragg_angle)))
@@ -177,13 +177,16 @@ def calc_partiality_anisotropy_set(
         rh_set.append(rh)
 
         # finding coordinate x,y on the detector
-        d_ratio = -detector_distance_mm / S[2]
-        dx_mm = S[0] * d_ratio
-        dy_mm = S[1] * d_ratio
-        pred_xy = col((spot_pred_x_mm, spot_pred_y_mm))
-        calc_xy = col((dx_mm, dy_mm))
-        diff_xy = pred_xy - calc_xy
-        delta_xy_set.append(diff_xy.length())
+        if detector_distance_mm is not None:
+            d_ratio = -detector_distance_mm / S[2]
+            dx_mm = S[0] * d_ratio
+            dy_mm = S[1] * d_ratio
+            pred_xy = col((spot_pred_x_mm, spot_pred_y_mm))
+            calc_xy = col((dx_mm, dy_mm))
+            diff_xy = pred_xy - calc_xy
+            delta_xy_set.append(diff_xy.length())
+        else:
+            delta_xy_set.append(0)
 
     return partiality_set, delta_xy_set, rs_set, rh_set
 
