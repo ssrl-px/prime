@@ -26,6 +26,7 @@ class postref_results(object):
         pickle_filename=None,
         wavelength=None,
         crystal_orientation=None,
+        detector_distance_mm=None,
     ):
 
         self.observations = observations
