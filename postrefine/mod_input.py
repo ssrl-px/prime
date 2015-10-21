@@ -369,6 +369,12 @@ def process_input(argv=None):
                 "Oops, incorrect target_crystal_system (available options: Triclinic, Monoclinic, Orthorhombic, Tetragonal, Trigonal, Hexagonal, or Cubic)."
             )
 
+    # check n_residues
+    if params.n_residues is None:
+        raise Sorry(
+            "Oops, we have a new required parameter n_residues. Please specify number of residues of your structure in asymmetric unit (n_residues = xxx)."
+        )
+
     # check indexing ambiguity parameters
     if (
         params.indexing_ambiguity.flag_on
