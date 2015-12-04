@@ -125,14 +125,14 @@ postref
     partiality_min = 0.1
       .type = float
       .help = Minimum partiality cutoff.
-    uc_tolerance = 3
+    uc_tolerance = 5
       .type = float
       .help = Unit-cell tolerance in percent.
   }
   allparams
     .help = All parameters
   {
-    flag_on = False
+    flag_on = True
       .type = bool
       .help = Set to True to refine all parameters together.
     d_min = 0.1
@@ -147,7 +147,7 @@ postref
     partiality_min = 0.1
       .type = float
       .help = Minimum partiality cutoff.
-    uc_tolerance = 3
+    uc_tolerance = 5
       .type = float
       .help = Unit-cell tolerance in percent.
   }
@@ -167,7 +167,7 @@ merge
   partiality_min = 0.1
     .type = float
     .help = Minimum partiality cutoff.
-  uc_tolerance = 3
+  uc_tolerance = 5
     .type = float
     .help = Unit-cell tolerance in percent.
 }
@@ -235,16 +235,13 @@ flag_force_no_postrefine = False
 n_postref_cycle = 3
   .type = int
   .help = No. of cycles for post-refinement.
-n_postref_sub_cycle = 3
+n_postref_sub_cycle = 1
   .type = int
   .help = No. of cycles for the least-squares minimization in post-refinement.
 n_rejection_cycle = 1
   .type = int
   .help = No. of cycles for the outlier rejection.
-n_min_frames = 1000
-  .type = int
-  .help = No. of minimum frames.
-sigma_rejection = 99
+sigma_rejection = 3
   .type = float
   .help = Sigma level for outlier rejection.
 n_bins = 20
