@@ -56,9 +56,7 @@ class intensities_scaler(object):
             avg_mode_cpp = Average_Mode.Final
         else:
             raise Sorry("Bad averaging mode selected: %s" % avg_mode)
-
         sigma_max = iparams.sigma_rejection
-
         engine = averaging_engine(
             group_no,
             group_id_list,
@@ -80,9 +78,7 @@ class intensities_scaler(object):
         engine.flag_volume_correction = iparams.flag_volume_correction
         engine.n_rejection_cycle = iparams.n_rejection_cycle
         engine.flag_output_verbose = iparams.flag_output_verbose
-
         results = engine.calc_avg_I()
-
         return (
             results.miller_index,
             results.I_avg,
@@ -123,7 +119,6 @@ class intensities_scaler(object):
                 alpha_all.append(pres.uc_params[3])
                 beta_all.append(pres.uc_params[4])
                 gamma_all.append(pres.uc_params[5])
-
         uc_mean = flex.double(
             [
                 np.mean(a_all),
@@ -154,7 +149,6 @@ class intensities_scaler(object):
                 np.std(gamma_all),
             ]
         )
-
         return uc_mean, uc_med, uc_std
 
     def calc_mean_postref_parameters(self, results):
@@ -313,7 +307,7 @@ class intensities_scaler(object):
                 if math.isnan(pres.SE) or np.isinf(pres.SE):
                     flag_pres_ok = False
 
-                if flag_pres_ok and SE_med > 0:
+                if flag_pres_ok and SE_std > 0:
                     if abs(pres.SE - SE_med) / SE_std > std_filter:
                         flag_pres_ok = False
                         cn_bad_frame_SE += 1
@@ -768,6 +762,23 @@ class intensities_scaler(object):
             miller_array_merge_unique.export_as_cns_hkl(file_object=f_cns)
             f_cns.close()
 
+        # calculate isotropic B-factor
+        try:
+            from mod_util import mx_handler
+
+            mxh = mx_handler()
+            asu_contents = mxh.get_asu_contents(iparams.n_residues)
+            observations_as_f = miller_array_merge.as_amplitude_array()
+            observations_as_f.setup_binner(auto_binning=True)
+            from cctbx import statistics
+
+            wp = statistics.wilson_plot(
+                observations_as_f, asu_contents, e_statistics=True
+            )
+            B_merged = wp.wilson_b
+        except Exception:
+            B_merged = 0
+
         # calculate total cc_anom for two halves
         cc_anom_acentric, cc_anom_centric, nrefl_anom_acentric, nrefl_anom_centric = (
             0,
@@ -847,6 +858,7 @@ class intensities_scaler(object):
         binner_template_asu_indices = binner_template_asu.bin_indices()
 
         txt_out = "\n"
+        txt_out += "Isotropic B-factor:  %7.2f\n" % (B_merged)
         txt_out += "No. of reflections\n"
         txt_out += " all:                %7.0f\n" % (n_refl_all)
         txt_out += " outside resolution: %7.0f\n" % (n_refl_out_resolutions)
@@ -1883,3 +1895,19 @@ class mx_handler(object):
             }
 
         return asu_contents
+
+
+class misc_handler(object):
+    """
+    Author      : Uervirojnangkoorn, M.
+    Created     : 1/6/2016
+    A collection of misc. functions
+    """
+
+    def __init__(self):
+        """Constructor."""
+
+    def get_resolution_step_for_B(self, iparams):
+        resolution_gap = 7 - iparams.scale.d_min
+        resolution_step = resolution_gap / iparams.n_bins
+        return resolution_step

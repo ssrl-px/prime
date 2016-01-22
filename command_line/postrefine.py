@@ -64,12 +64,10 @@ def read_pickles(data):
             for pickle_filename in os.listdir(p):
                 if pickle_filename.endswith(".pickle"):
                     frame_files.append(p + "/" + pickle_filename)
-
     # check if pickle_dir is given in input file instead of from cmd arguments.
     if len(frame_files) == 0:
         print "No pickle files found."
         exit()
-
     return frame_files
 
 
@@ -88,7 +86,6 @@ if __name__ == "__main__":
     logging.basicConfig(
         format="%(asctime)s\t%(levelname)s\t%(message)s", level=logging.DEBUG
     )
-
     # 0 .read input parameters and frames (pickle files)
     from prime.postrefine import read_input
 
@@ -96,10 +93,8 @@ if __name__ == "__main__":
     iparams.flag_volume_correction = False
     print txt_out_input
     txt_out_verbose = "Log verbose\n" + txt_out_input
-
     frame_files = read_pickles(iparams.data)
     frames = range(len(frame_files))
-
     # 1. prepare reference miller array
     txt_merge_mean = "Generating a reference set (will not be used if hklrefin is set)"
     if iparams.indexing_ambiguity.flag_on:
@@ -111,11 +106,9 @@ if __name__ == "__main__":
     print txt_merge_mean
     txt_merge_mean += "\n"
     txt_merge_mean_table = ""
-
     miller_array_ref = None
     avg_mode = "average"
     # Always generate the mean-intensity scaled set.
-
     if iparams.flag_apply_b_by_frame:
         mean_of_mean_I = 0
     else:
@@ -128,7 +121,6 @@ if __name__ == "__main__":
             func=determine_mean_I_mproc_wrapper,
             processes=iparams.n_processors,
         )
-
         frames_mean_I = flex.double()
         for result in determine_mean_I_result:
             if result is not None:
@@ -136,7 +128,6 @@ if __name__ == "__main__":
                 if mean_I is not None:
                     frames_mean_I.append(mean_I)
         mean_of_mean_I = np.median(frames_mean_I)
-
     # use the calculate <mean_I> to scale each frame
     def scale_frame_by_mean_I_mproc_wrapper(arg):
         return scale_frame_by_mean_I_mproc(
@@ -148,24 +139,20 @@ if __name__ == "__main__":
         func=scale_frame_by_mean_I_mproc_wrapper,
         processes=iparams.n_processors,
     )
-
     observations_merge_mean_set = []
     for result in scale_frame_by_mean_I_result:
         if result is not None:
             pres, txt_out_result = result
             if pres is not None:
                 observations_merge_mean_set.append(pres)
-
     if len(observations_merge_mean_set) > 0:
         from prime.postrefine import prepare_output
 
         prep_output = prepare_output(observations_merge_mean_set, iparams, avg_mode)
-
         if prep_output is not None:
             cn_group, group_id_list, miller_indices_all_sort, miller_indices_ori_all_sort, I_obs_all_sort, sigI_obs_all_sort, G_all_sort, B_all_sort, p_all_sort, rs_all_sort, wavelength_all_sort, sin_sq_all_sort, SE_all_sort, uc_mean, wavelength_mean, pickle_filename_all_sort, txt_prep_out = (
                 prep_output
             )
-
             if True:
                 from prime.postrefine import calc_avg_I_cpp
 
@@ -187,7 +174,6 @@ if __name__ == "__main__":
                     iparams,
                     pickle_filename_all_sort,
                 )
-
                 miller_index, I_avg, sigI_avg, stat, I_avg_two_halves_tuple, txt_obs_out, txt_reject_out = (
                     calc_average_I_result
                 )
@@ -206,7 +192,6 @@ if __name__ == "__main__":
                 I_odd_k = flex.double()
                 I_even_l = flex.double()
                 I_odd_l = flex.double()
-
                 txt_out_verbose += (
                     "Mean-scaled partiality-corrected set\n" + txt_obs_out
                 )
@@ -234,11 +219,9 @@ if __name__ == "__main__":
                         I_odd_k.append(I_avg_odd_k[i])
                         I_even_l.append(I_avg_even_l[i])
                         I_odd_l.append(I_avg_odd_l[i])
-
             f = open(iparams.run_no + "/rejections.txt", "w")
             f.write(txt_out_rejection)
             f.close()
-
             from prime.postrefine import write_output
 
             miller_array_ref, txt_merge_mean_table = write_output(
@@ -262,7 +245,6 @@ if __name__ == "__main__":
                 iparams.run_no + "/mean_scaled",
                 avg_mode,
             )
-
             # reset index_basis_in
             if (
                 str(iparams.indexing_ambiguity.index_basis_in).endswith("pickle")
@@ -271,7 +253,6 @@ if __name__ == "__main__":
                 iparams.indexing_ambiguity.index_basis_in = (
                     iparams.run_no + "/mean_scaled_merge.mtz"
                 )
-
             txt_merge_mean += txt_merge_mean_table + txt_prep_out
             print txt_merge_mean_table
             print txt_prep_out
@@ -280,13 +261,7 @@ if __name__ == "__main__":
                 f = open(iparams.run_no + "/log.txt", "w")
                 f.write(txt_out)
                 f.close()
-
-                if iparams.flag_output_verbose:
-                    f = open(iparams.run_no + "/log_verbose.txt", "w")
-                    f.write(txt_out_verbose)
-                    f.close()
                 exit()
-
     if iparams.hklrefin is not None:
         # In case ref. intensity set is given, overwrite the reference set.
         from iotbx import reflection_file_reader
@@ -308,11 +283,9 @@ if __name__ == "__main__":
         if is_found_ref_as_intensity_array == False:
             if is_found_ref_as_amplitude_array:
                 miller_array_ref = miller_array_converted_to_intensity.deep_copy()
-
     if miller_array_ref is None:
         print "No reference intensity. Exit without post-refinement"
         exit()
-
     # 2. Post-refinement
     n_iters = iparams.n_postref_cycle
     txt_merge_postref = ""
@@ -324,7 +297,6 @@ if __name__ == "__main__":
             avg_mode = "final"
         else:
             avg_mode = "weighted"
-
         _txt_merge_postref = (
             "Post-refinement cycle " + str(i_iter + 1) + " (" + avg_mode + ")\n"
         )
@@ -353,7 +325,6 @@ if __name__ == "__main__":
             func=postrefine_by_frame_mproc_wrapper,
             processes=iparams.n_processors,
         )
-
         postrefine_by_frame_good = []
         postrefine_by_frame_pres_list = []
         for results in postrefine_by_frame_result:
@@ -364,18 +335,14 @@ if __name__ == "__main__":
                     postrefine_by_frame_good.append(pres)
             else:
                 postrefine_by_frame_pres_list.append(None)
-
         if len(postrefine_by_frame_good) > 0:
-
             from prime.postrefine import prepare_output
 
             prep_output = prepare_output(postrefine_by_frame_good, iparams, avg_mode)
-
             if prep_output is not None:
                 cn_group, group_id_list, miller_indices_all_sort, miller_indices_ori_all_sort, I_obs_all_sort, sigI_obs_all_sort, G_all_sort, B_all_sort, p_all_sort, rs_all_sort, wavelength_all_sort, sin_sq_all_sort, SE_all_sort, uc_mean, wavelength_mean, pickle_filename_all_sort, txt_prep_out = (
                     prep_output
                 )
-
                 if True:
                     from prime.postrefine import calc_avg_I_cpp
 
@@ -416,7 +383,6 @@ if __name__ == "__main__":
                     I_odd_k = flex.double()
                     I_even_l = flex.double()
                     I_odd_l = flex.double()
-
                     txt_out_verbose += (
                         "Post-refined merged set (cycle "
                         + str(i_iter + 1)
@@ -453,11 +419,9 @@ if __name__ == "__main__":
                             I_odd_k.append(I_avg_odd_k[i])
                             I_even_l.append(I_avg_even_l[i])
                             I_odd_l.append(I_avg_odd_l[i])
-
                 f = open(iparams.run_no + "/rejections.txt", "a")
                 f.write(txt_out_rejection)
                 f.close()
-
                 from prime.postrefine import write_output
 
                 miller_array_pr, txt_merge_out = write_output(
@@ -481,7 +445,6 @@ if __name__ == "__main__":
                     iparams.run_no + "/postref_cycle_" + str(i_iter + 1),
                     avg_mode,
                 )
-
                 # reset index_basis_in
                 if (
                     str(iparams.indexing_ambiguity.index_basis_in).endswith("pickle")
@@ -493,16 +456,13 @@ if __name__ == "__main__":
                         + str(i_iter + 1)
                         + "_merge.mtz"
                     )
-
                 miller_array_ref = miller_array_pr.deep_copy()
-
                 txt_merge_postref += txt_merge_out + txt_prep_out
                 print txt_merge_out
                 print txt_prep_out
         else:
             print "No frames merged as a reference set - exit without post-refinement"
             exit()
-
     # collect caculating time
     time_global_end = datetime.now()
     time_global_spent = time_global_end - time_global_start
@@ -512,13 +472,7 @@ if __name__ == "__main__":
         + " seconds\n"
     )
     print txt_out_time_spent
-
     txt_out = txt_out_input + txt_merge_mean + txt_merge_postref + txt_out_time_spent
     f = open(iparams.run_no + "/log.txt", "w")
     f.write(txt_out)
     f.close()
-
-    if iparams.flag_output_verbose:
-        f = open(iparams.run_no + "/log_verbose.txt", "w")
-        f.write(txt_out_verbose)
-        f.close()
