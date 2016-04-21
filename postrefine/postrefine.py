@@ -503,7 +503,7 @@ class postref_handler(object):
         )
         # 4. Do least-squares refinement
         lsqrh = leastsqr_handler()
-        if True:
+        try:
             refined_params, stats, n_refl_postrefined = lsqrh.optimize(
                 I_ref_match,
                 observations_original_sel,
@@ -517,9 +517,9 @@ class postref_handler(object):
                 observations_non_polar_sel,
                 detector_distance_mm,
             )
-        # except Exception:
-        #  txt_exception += 'optimization failed.\n'
-        #  return None, txt_exception
+        except Exception:
+            txt_exception += "optimization failed.\n"
+            return None, txt_exception
         # caculate partiality for output (with target_anomalous check)
         G_fin, B_fin, rotx_fin, roty_fin, ry_fin, rz_fin, r0_fin, re_fin, a_fin, b_fin, c_fin, alpha_fin, beta_fin, gamma_fin = (
             refined_params
@@ -722,7 +722,7 @@ class postref_handler(object):
 
                 mxh = mx_handler()
                 asu_contents = mxh.get_asu_contents(iparams.n_residues)
-                observations_as_f = observations_non_polar.as_amplitude_array()
+                observations_as_f = observations_non_polar_sel.as_amplitude_array()
                 binner_template_asu = observations_as_f.setup_binner(auto_binning=True)
                 wp = statistics.wilson_plot(
                     observations_as_f, asu_contents, e_statistics=True
