@@ -168,7 +168,7 @@ def read_input(args):
 
 if __name__ == "__main__":
     cc_bin_low_thres = 0.25
-    beam_thres = 0.25
+    beam_thres = 0.5
     uc_tol = 20
     # 0 .read input parameters and frames (pickle files)
     data, hklrefin, pixel_size_mm, check_sys_absent_input, target_unit_cell, target_space_group, target_anomalous_flag, flag_plot, d_min, d_max, n_residues = read_input(
@@ -185,7 +185,12 @@ if __name__ == "__main__":
     oodsqr_bins_set = []
     flag_good_unit_cell_set = []
     print "Summary of integration pickles:"
-    print "(image file, min. res., max. res, beamx, beamy, n_refl, cciso, <cciso_bin>, a, b, c, mosaicity, residual, detector_distance_mm, G, B)"
+    print "(image file, min. res., max. res, beamx, beamy, n_refl, cciso, <cciso_bin>, a, b, c, mosaicity, residual, dd_mm, wavelength, good_cell?, G, B)"
+    uc_a = flex.double()
+    uc_b = flex.double()
+    uc_c = flex.double()
+    dd_mm = flex.double()
+    wavelength_set = flex.double()
     for pickle_filename in frame_files:
         check_sys_absent = check_sys_absent_input
         observations_pickle = pickle.load(open(pickle_filename, "rb"))
@@ -251,6 +256,13 @@ if __name__ == "__main__":
         )
         spot_pred_x_mm = flex.double([pred[0] - xbeam for pred in mm_predictions])
         spot_pred_y_mm = flex.double([pred[1] - ybeam for pred in mm_predictions])
+        # calculate mean unit cell
+        if flag_good_unit_cell:
+            uc_a.append(observations.unit_cell().parameters()[0])
+            uc_b.append(observations.unit_cell().parameters()[1])
+            uc_c.append(observations.unit_cell().parameters()[2])
+            dd_mm.append(detector_distance_mm)
+            wavelength_set.append(wavelength)
         # resoultion filter
         i_sel_res = observations.resolution_filter_selection(d_min=d_min, d_max=d_max)
         observations = observations.select(i_sel_res)
@@ -277,7 +289,7 @@ if __name__ == "__main__":
             .sin_theta_over_lambda_sq()
             .data()
         )
-        ry, rz, re, rotx, roty = (0, 0, 0.003, 0, 0)
+        ry, rz, re, nu, rotx, roty = (0, 0, 0.003, 0.5, 0, 0)
         flag_beam_divergence = False
         partiality_init, delta_xy_init, rs_init, rh_init = ph.calc_partiality_anisotropy_set(
             crystal_init_orientation.unit_cell(),
@@ -288,6 +300,7 @@ if __name__ == "__main__":
             rz,
             r0,
             re,
+            nu,
             two_theta,
             alpha_angle,
             wavelength,
@@ -338,8 +351,11 @@ if __name__ == "__main__":
                     oodsqr_match.append(1 / (d ** 2))
                     d_match.append(d)
             # calculate correlation
-            cc_iso = np.corrcoef(I_iso_match, I_match)[0, 1]
-            cc_full_iso = np.corrcoef(I_iso_match, I_full_match)[0, 1]
+            try:
+                cc_iso = np.corrcoef(I_iso_match, I_match)[0, 1]
+                cc_full_iso = np.corrcoef(I_iso_match, I_full_match)[0, 1]
+            except Exception:
+                pass
             # scatter plot
             if flag_plot and len(frame_files) == 1:
                 plt.subplot(211)
@@ -368,7 +384,10 @@ if __name__ == "__main__":
                     I_iso_bin = I_iso_match[i_start:i_end]
                     I_bin = I_match[i_start:i_end]
                     d_bin = d_match[i_start:i_end]
-                    cc_bin = np.corrcoef(I_iso_bin, I_bin)[0, 1]
+                    try:
+                        cc_bin = np.corrcoef(I_iso_bin, I_bin)[0, 1]
+                    except Exception:
+                        cc_bin = 0
                     cc_bins.append(cc_bin)
                     try:
                         min_d_bin = np.min(d_bin)
@@ -399,7 +418,7 @@ if __name__ == "__main__":
                 print "Direct matrix"
                 print crystal_init_orientation.direct_matrix()
         a, b, c, alpha, beta, gamma = observations.unit_cell().parameters()
-        txt_out_head = "{0:40} {1:5.2f} {2:5.2f} {3:5.2f} {4:5.2f} {5:5.0f} {6:6.2f} {7:6.2f} {8:6.2f} {9:6.2f} {10:6.2f} {11:6.2f} {12:6.2f} {13:6.2f} {14:6.2f} {15:6.2f} {16:6.2f} {17:5} {18:6.2f} {19:6.2f}".format(
+        txt_out_head = "{0:40} {1:5.2f} {2:5.2f} {3:5.2f} {4:5.2f} {5:5.0f} {6:6.2f} {7:6.2f} {8:6.2f} {9:6.2f} {10:6.2f} {11:6.2f} {12:6.2f} {13:6.2f} {14:6.2f} {15:6.2f} {16:6.2f} {20:6.4f} {17:5} {18:6.2f} {19:6.2f}".format(
             pickle_filename_only,
             observations.d_min(),
             np.max(observations.d_spacings().data()),
@@ -420,6 +439,7 @@ if __name__ == "__main__":
             flag_good_unit_cell,
             wilson_G,
             wilson_B,
+            wavelength,
         )
         print txt_out_head
         cc_bin_low_set.append(cc_iso)
@@ -523,6 +543,13 @@ if __name__ == "__main__":
     print
     print "Xbeam mean=%8.4f std=%6.4f" % (xbeam_mean, xbeam_std)
     print "Ybeam mean=%8.4f std=%6.4f" % (ybeam_mean, ybeam_std)
+    print "UC mean a=%8.4f b=%8.4f c=%9.4f" % (
+        flex.mean(uc_a),
+        flex.mean(uc_b),
+        flex.mean(uc_c),
+    )
+    print "Detector distance mean=%8.4f" % (flex.mean(dd_mm))
+    print "Wavelength mean=%8.4f" % (flex.mean(wavelength_set))
     print "No. of frames: All = %6.0f Beam outliers = %6.0f CC filter=%6.0f" % (
         len(frame_files),
         len(frame_files) - (len(txt_out.split("\n")) - 1),

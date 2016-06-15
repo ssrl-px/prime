@@ -214,9 +214,6 @@ class postref_handler(object):
         spot_pred_x_mm = spot_pred_x_mm.select(i_sel_res)
         spot_pred_y_mm = spot_pred_y_mm.select(i_sel_res)
         # Filter weak
-        if iparams.flag_include_negatives:
-            if iparams.merge.sigma_min > 0:
-                iparams.merge.sigma_min = -99.0
         i_sel = (observations.data() / observations.sigmas()) > iparams.merge.sigma_min
         observations = observations.select(i_sel)
         alpha_angle_obs = alpha_angle_obs.select(i_sel)
@@ -521,7 +518,7 @@ class postref_handler(object):
             txt_exception += "optimization failed.\n"
             return None, txt_exception
         # caculate partiality for output (with target_anomalous check)
-        G_fin, B_fin, rotx_fin, roty_fin, ry_fin, rz_fin, r0_fin, re_fin, a_fin, b_fin, c_fin, alpha_fin, beta_fin, gamma_fin = (
+        G_fin, B_fin, rotx_fin, roty_fin, ry_fin, rz_fin, r0_fin, re_fin, voigt_nu_fin, a_fin, b_fin, c_fin, alpha_fin, beta_fin, gamma_fin = (
             refined_params
         )
         inputs, txt_organize_input = self.organize_input(
@@ -549,6 +546,7 @@ class postref_handler(object):
             rz_fin,
             r0_fin,
             re_fin,
+            voigt_nu_fin,
             two_theta,
             alpha_angle,
             wavelength,
@@ -738,7 +736,14 @@ class postref_handler(object):
             .sin_theta_over_lambda_sq()
             .data()
         )
-        ry, rz, re, rotx, roty = (0, 0, iparams.gamma_e, 0, 0)
+        ry, rz, re, voigt_nu, rotx, roty = (
+            0,
+            0,
+            iparams.gamma_e,
+            iparams.voigt_nu,
+            0,
+            0,
+        )
         partiality_init, delta_xy_init, rs_init, rh_init = ph.calc_partiality_anisotropy_set(
             crystal_init_orientation.unit_cell(),
             rotx,
@@ -748,6 +753,7 @@ class postref_handler(object):
             rz,
             r0,
             re,
+            voigt_nu,
             two_theta,
             alpha_angle,
             wavelength,
@@ -787,6 +793,7 @@ class postref_handler(object):
                 rz,
                 r0,
                 re,
+                voigt_nu,
                 uc_params[0],
                 uc_params[1],
                 uc_params[2],

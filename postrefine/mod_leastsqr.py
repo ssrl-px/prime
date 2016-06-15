@@ -119,7 +119,6 @@ class leastsqr_handler(object):
         detector_distance_mm,
         const_params,
     ):
-        self.gamma_e = iparams.gamma_e
         ph = partiality_handler()
         pr_d_min = iparams.postref.scale.d_min
         pr_d_max = iparams.postref.scale.d_max
@@ -148,17 +147,11 @@ class leastsqr_handler(object):
         I_r_true = I_ref_sel[:]
         I_o_true = observations_original_sel.data()[:]
         if pres_in is not None:
-            G, B, b0, r0 = pres_in.G, pres_in.B, pres_in.B, pres_in.r0
+            G, B, b0 = pres_in.G, pres_in.B, pres_in.B
         else:
-            # initialize r0
-            r0 = ph.calc_spot_radius(
-                sqr(crystal_init_orientation.reciprocal_matrix()),
-                observations_original_sel.indices(),
-                wavelength,
-            )
             if iparams.flag_apply_b_by_frame:
                 # initialize scale factors
-                if True:
+                try:
                     from mod_util import mx_handler
 
                     mxh = mx_handler()
@@ -174,9 +167,9 @@ class leastsqr_handler(object):
                     )
                     G = wp.wilson_intensity_scale_factor * 1e3
                     B = wp.wilson_b
-                # except Exception:
-                #  print 'Error calculation B-factor in mod_leastsqr'
-                #  G, B = (flex.sum(I_o_true)/flex.sum(I_r_true),0)
+                except Exception:
+                    print "Error calculation B-factor in mod_leastsqr"
+                    G, B = (flex.sum(I_o_true) / flex.sum(I_r_true), 0)
             else:
                 G, B = (flex.sum(I_o_true) / flex.sum(I_r_true), 0)
             # reset b0
@@ -200,7 +193,7 @@ class leastsqr_handler(object):
         )
         lh = lbfgs_handler(current_x=xinp, args=args)
         G_fin, B_fin = (lh.x[0], lh.x[1])
-        rotx, roty, ry, rz, r0, re, a, b, c, alpha, beta, gamma = const_params
+        rotx, roty, ry, rz, r0, re, voigt_nu, a, b, c, alpha, beta, gamma = const_params
         two_theta = observations_original.two_theta(wavelength=wavelength)
         sin_theta_over_lambda_sq = two_theta.sin_theta_over_lambda_sq().data()
         uc = unit_cell((a, b, c, alpha, beta, gamma))
@@ -214,6 +207,7 @@ class leastsqr_handler(object):
             rz,
             r0,
             re,
+            voigt_nu,
             two_theta.data(),
             alpha_angle,
             wavelength,
@@ -328,7 +322,9 @@ class leastsqr_handler(object):
             I_ref_sel,
         )
         # extract refined parameters
-        G, B, rotx, roty, ry, rz, r0, re, a, b, c, alpha, beta, gamma = init_params
+        G, B, rotx, roty, ry, rz, r0, re, voigt_nu, a, b, c, alpha, beta, gamma = (
+            init_params
+        )
         # filter by partiality
         two_theta = observations_original_sel.two_theta(wavelength=wavelength).data()
         uc = unit_cell((a, b, c, alpha, beta, gamma))
@@ -342,6 +338,7 @@ class leastsqr_handler(object):
             rz,
             r0,
             re,
+            voigt_nu,
             two_theta,
             alpha_angle_sel,
             wavelength,
@@ -384,7 +381,6 @@ class leastsqr_handler(object):
         observations_non_polar,
         detector_distance_mm,
     ):
-        self.gamma_e = iparams.gamma_e
         ph = partiality_handler()
         lph = lbfgs_partiality_handler()
         if iparams.postref.allparams.flag_on:
@@ -397,7 +393,6 @@ class leastsqr_handler(object):
                 refine_steps.append("unit_cell")
         # get miller array iso, if given.
         miller_array_iso = None
-
         # prepare data
         pr_d_min = iparams.postref.allparams.d_min
         pr_d_max = iparams.postref.allparams.d_max
@@ -432,7 +427,15 @@ class leastsqr_handler(object):
             wavelength,
         )
         if pres_in is None:
-            ry, rz, r0, re, rotx, roty = 0, 0, spot_radius, self.gamma_e, 0.0, 0.0
+            ry, rz, r0, re, voigt_nu, rotx, roty = (
+                0,
+                0,
+                spot_radius,
+                iparams.gamma_e,
+                iparams.voigt_nu,
+                0.0,
+                0.0,
+            )
             # apply constrain on the unit cell using crystal system
             uc_scale_inp = lph.prep_input(
                 observations_original.unit_cell().parameters(), cs
@@ -446,6 +449,7 @@ class leastsqr_handler(object):
                 rz,
                 r0,
                 re,
+                voigt_nu,
                 a,
                 b,
                 c,
@@ -469,13 +473,14 @@ class leastsqr_handler(object):
             )
             G, B = xopt_scalefactors
         else:
-            G, B, ry, rz, r0, re, rotx, roty = (
+            G, B, ry, rz, r0, re, voigt_nu, rotx, roty = (
                 pres_in.G,
                 pres_in.B,
                 pres_in.ry,
                 pres_in.rz,
                 pres_in.r0,
                 pres_in.re,
+                pres_in.voigt_nu,
                 0.0,
                 0.0,
             )
@@ -493,6 +498,7 @@ class leastsqr_handler(object):
             rz,
             r0,
             re,
+            voigt_nu,
             two_theta,
             alpha_angle_sel,
             wavelength,
@@ -516,7 +522,7 @@ class leastsqr_handler(object):
         I_r_true = I_ref_sel[:]
         I_o_true = observations_original_sel.data()[:]
         # calculate initial residual_xy error
-        const_params_uc = (G, B, rotx, roty, ry, rz, r0, re)
+        const_params_uc = (G, B, rotx, roty, ry, rz, r0, re, voigt_nu)
         xinp_uc = lph.prep_input((a, b, c, alpha, beta, gamma), cs)
         args_uc = (
             I_r_true,
@@ -537,7 +543,7 @@ class leastsqr_handler(object):
         init_residual_xy_err = flex.sum(uc_params_err ** 2)
         # calculate initial residual_pr error
         const_params_all = (G, B)
-        xinp_all = flex.double([rotx, roty, ry, rz, r0, re])
+        xinp_all = flex.double([rotx, roty, ry, rz, r0, re, voigt_nu])
         xinp_all.extend(lph.prep_input((a, b, c, alpha, beta, gamma), cs))
         args_all = (
             I_r_true,
@@ -560,7 +566,7 @@ class leastsqr_handler(object):
         t_pr_list = [init_residual_err]
         t_xy_list = [init_residual_xy_err]
         refined_params_hist = [
-            (G, B, rotx, roty, ry, rz, r0, re, a, b, c, alpha, beta, gamma)
+            (G, B, rotx, roty, ry, rz, r0, re, voigt_nu, a, b, c, alpha, beta, gamma)
         ]
         txt_out = ""
         for i_sub_cycle in range(iparams.n_postref_sub_cycle):
@@ -576,6 +582,7 @@ class leastsqr_handler(object):
                     rz,
                     r0,
                     re,
+                    voigt_nu,
                     a,
                     b,
                     c,
@@ -600,15 +607,29 @@ class leastsqr_handler(object):
                 I_o_true = observations_original_sel.data()
                 if refine_mode == "crystal_orientation":
                     xinp = flex.double([rotx, roty])
-                    const_params = (G, B, ry, rz, r0, re, a, b, c, alpha, beta, gamma)
+                    const_params = (
+                        G,
+                        B,
+                        ry,
+                        rz,
+                        r0,
+                        re,
+                        voigt_nu,
+                        a,
+                        b,
+                        c,
+                        alpha,
+                        beta,
+                        gamma,
+                    )
                 elif refine_mode == "reflecting_range":
-                    xinp = flex.double([ry, rz, r0, re])
+                    xinp = flex.double([ry, rz, r0, re, voigt_nu])
                     const_params = (G, B, rotx, roty, a, b, c, alpha, beta, gamma)
                 elif refine_mode == "unit_cell":
                     xinp = lph.prep_input((a, b, c, alpha, beta, gamma), cs)
-                    const_params = (G, B, rotx, roty, ry, rz, r0, re)
+                    const_params = (G, B, rotx, roty, ry, rz, r0, re, voigt_nu)
                 elif refine_mode == "allparams":
-                    xinp = flex.double([rotx, roty, ry, rz, r0, re])
+                    xinp = flex.double([rotx, roty, ry, rz, r0, re, voigt_nu])
                     xinp.extend(lph.prep_input((a, b, c, alpha, beta, gamma), cs))
                     const_params = (G, B)
                 args = (
@@ -639,12 +660,12 @@ class leastsqr_handler(object):
                     if refine_mode == "crystal_orientation":
                         rotx, roty = xopt
                     elif refine_mode == "reflecting_range":
-                        ry, rz, r0, re = xopt
+                        ry, rz, r0, re, voigt_nu = xopt
                     elif refine_mode == "allparams":
-                        rotx, roty, ry, rz, r0, re = xopt[:6]
-                        xinp_uc = xopt[6:]
+                        rotx, roty, ry, rz, r0, re, voigt_nu = xopt[:7]
+                        xinp_uc = xopt[7:]
                         a, b, c, alpha, beta, gamma = lph.prep_output(xinp_uc, cs)
-                    const_params_uc = (G, B, rotx, roty, ry, rz, r0, re)
+                    const_params_uc = (G, B, rotx, roty, ry, rz, r0, re, voigt_nu)
                     xinp_uc = lph.prep_input((a, b, c, alpha, beta, gamma), cs)
                     args_uc = (
                         I_r_true,
@@ -668,7 +689,7 @@ class leastsqr_handler(object):
                     xopt_uc = lph.prep_output(xopt, cs)
                     a, b, c, alpha, beta, gamma = xopt_uc
                     # check the unit-cell with the reference intensity
-                    xinp = flex.double([rotx, roty, ry, rz, r0, re])
+                    xinp = flex.double([rotx, roty, ry, rz, r0, re, voigt_nu])
                     xinp.extend(lph.prep_input((a, b, c, alpha, beta, gamma), cs))
                     const_params_all = (G, B)
                     args_all = (
@@ -711,6 +732,7 @@ class leastsqr_handler(object):
                                 rz,
                                 r0,
                                 re,
+                                voigt_nu,
                                 a,
                                 b,
                                 c,
@@ -721,9 +743,6 @@ class leastsqr_handler(object):
                         )
                         flag_success = True
                 else:
-                    # print '---'
-                    # print '%.4g %.4g %.4g %.4g %.4g %.4g'%(current_residual_err, t_pr_list[len(t_pr_list)-1], t_pr_list[len(t_pr_list)-1]*iparams.postref.residual_threshold/100, current_residual_xy_err, t_xy_list[len(t_xy_list)-1], t_xy_list[len(t_xy_list)-1]*iparams.postref.residual_threshold_xy/100)
-                    # print '---'
                     if current_residual_err < (
                         t_pr_list[len(t_pr_list) - 1]
                         + (
@@ -752,6 +771,7 @@ class leastsqr_handler(object):
                                     rz,
                                     r0,
                                     re,
+                                    voigt_nu,
                                     a,
                                     b,
                                     c,
@@ -761,16 +781,13 @@ class leastsqr_handler(object):
                                 )
                             )
                             flag_success = True
-                            # print 'Refine ', refine_mode, '- accecpted', G, B, rotx, roty, ry, rz, r0, re, a, b, c, alpha, beta, gamma
                 if flag_success is False:
-                    G, B, rotx, roty, ry, rz, r0, re, a, b, c, alpha, beta, gamma = refined_params_hist[
+                    G, B, rotx, roty, ry, rz, r0, re, voigt_nu, a, b, c, alpha, beta, gamma = refined_params_hist[
                         len(refined_params_hist) - 1
                     ]
-                    # print 'Refine ', refine_mode, '- reverted to', G, B, rotx, roty, ry, rz, r0, re, a, b, c, alpha, beta, gamma
-
                 tmp_txt_out = (
                     refine_mode
-                    + " %3.0f %6.4f %6.4f %6.4f %6.4f %10.8f %10.8f %10.8f %10.8f %6.3f %6.3f %.4g %6.3f\n"
+                    + " %3.0f %6.4f %6.4f %6.4f %6.4f %10.8f %10.8f %10.8f %10.8f %10.8f %6.3f %6.3f %.4g %6.3f\n"
                     % (
                         i_sub_cycle,
                         G,
@@ -781,6 +798,7 @@ class leastsqr_handler(object):
                         rz,
                         r0,
                         re,
+                        voigt_nu,
                         a,
                         c,
                         t_pr_list[len(t_pr_list) - 1],
@@ -804,7 +822,8 @@ class leastsqr_handler(object):
                 0,
                 0,
                 spot_radius,
-                self.gamma_e,
+                iparams.gamma_e,
+                iparams.voigt_nu,
                 two_theta,
                 alpha_angle,
                 wavelength,
@@ -833,6 +852,7 @@ class leastsqr_handler(object):
                 pres_in.rz,
                 pres_in.r0,
                 pres_in.re,
+                pres_in.voigt_nu,
                 two_theta,
                 alpha_angle,
                 wavelength,
@@ -860,6 +880,7 @@ class leastsqr_handler(object):
             rz,
             r0,
             re,
+            voigt_nu,
             two_theta,
             alpha_angle,
             wavelength,
@@ -899,7 +920,7 @@ class leastsqr_handler(object):
                     spot_radius,
                     0.0,
                     0.0,
-                    self.gamma_e,
+                    iparams.gamma_e,
                     0.0,
                     0.0,
                 )
@@ -944,7 +965,7 @@ class leastsqr_handler(object):
                 CC_iso_final = flex.linear_correlation(
                     I_iso_match, I_o_fin_match
                 ).coefficient()
-        xopt = (G, B, rotx, roty, ry, rz, r0, re, a, b, c, alpha, beta, gamma)
+        xopt = (G, B, rotx, roty, ry, rz, r0, re, voigt_nu, a, b, c, alpha, beta, gamma)
         return (
             xopt,
             (
