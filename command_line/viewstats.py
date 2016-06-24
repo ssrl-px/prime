@@ -35,7 +35,6 @@ for i in range(cn_file):
     param_file_list.append(run_no + "/" + str(i) + ".paramhist")
 
 data_dict_list = []
-n_col = 20
 for param_file in param_file_list:
     pf = open(param_file, "r")
     data = pf.read().split("\n")
@@ -43,6 +42,9 @@ for param_file in param_file_list:
     n_data = 0
     for data_row in data:
         dc = data_row.split()
+        # use row 1 to set n_col
+        if n_data == 0:
+            n_col = len(dc)
         if len(dc) == n_col:
             data_dict[dc[n_col - 1]] = np.array(
                 [float(dc[i]) for i in range(n_col - 1)]
@@ -115,6 +117,7 @@ data_title = [
     "rz",
     "r0",
     "re",
+    "voigt_nu",
     "a",
     "b",
     "c",
@@ -131,7 +134,7 @@ for i in range(n_col - 2):
             narr = np.array([delta_dict[key][i] for key in delta_dict.keys()])
             data_series.append(narr)
 
-            ax = plt.subplot(4, 4, cn_plot, title=data_title[i])
+            ax = plt.subplot(4, 5, cn_plot, title=data_title[i])
             plt.boxplot(data_series)
             plt.xticks(x_range, x_label)
             if data_title[i] in ("ry", "rz", "r0", "re"):
