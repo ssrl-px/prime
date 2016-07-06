@@ -13,6 +13,8 @@ Description : PRIME GUI startup module.
 
 import wx
 import numpy as np
+
+assert np
 from prime.postrefine.mod_gui_init import PRIMEWindow
 
 
@@ -26,16 +28,6 @@ class MainApp(wx.App):
         self.frame.Show(True)
         self.SetTopWindow(self.frame)
         return True
-
-    def workaround(self):
-        """An idiotic workaround to avoid a Boost Python crash that happens
-        when any PRIME module is imported; numpy has to be imported prior to
-        any PRIME module; this function calls numpy to avoid the "unused
-        import" error.
-
-        Someday we will fix this.
-        """
-        wrk = np.mean(range(100))
 
 
 if __name__ == "__main__":
