@@ -20,12 +20,11 @@ def postrefine_by_frame_mproc(args):
         frame_no, pickle_result, iparams, miller_array_ref, avg_mode
     )
     # overwrite to the original frame_no file.
-    if pres is not None:
-        pickle.dump(
-            pres,
-            open(iparams.run_no + "/pickles/" + str(pres.frame_no) + ".o", "wb"),
-            pickle.HIGHEST_PROTOCOL,
-        )
+    pickle.dump(
+        pres,
+        open(iparams.run_no + "/pickles/" + str(frame_no) + ".o", "wb"),
+        pickle.HIGHEST_PROTOCOL,
+    )
 
 
 if __name__ == "__main__":
