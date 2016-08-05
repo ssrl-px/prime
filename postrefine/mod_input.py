@@ -391,6 +391,24 @@ def process_input(argv=None, flag_check_exist=True):
             "Oops, we have a new required parameter n_residues. Please specify number of residues of your structure in asymmetric unit (n_residues = xxx)."
         )
 
+    # check pixel_size
+    if params.pixel_size_mm is None:
+        # look in the new integration pickle format (2016-08-05)
+        try:
+            frame_files = read_pickles(params.data)
+            frame_0 = frame_files[0]
+            import cPickle as pickle
+
+            int_pickle = pickle.load(open(frame_0, "rb"))
+            params.pixel_size_mm = int_pickle["pixel_size"]
+            print "Found pixel size in the integration pickles (override pixel_size_mm=%10.8f)" % (
+                params.pixel_size_mm
+            )
+        except Exception:
+            raise Sorry(
+                "Pixel size in millimeter is required. Use cctbx.image_viewer to view one of your images and note down the value (e.g. for marccd set pixel_size_mm=0.079346)."
+            )
+
     # check indexing ambiguity parameters
     if (
         params.indexing_ambiguity.flag_on
