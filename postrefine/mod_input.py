@@ -1,7 +1,7 @@
 from __future__ import division
 import iotbx.phil
 from libtbx.utils import Usage, Sorry
-import sys, os
+import sys, os, shutil, glob
 
 master_phil = iotbx.phil.parse(
     """
@@ -390,13 +390,13 @@ def process_input(argv=None, flag_check_exist=True):
     if params.target_crystal_system is not None:
         if params.target_crystal_system not in crystal_system_dict:
             raise Sorry(
-                "Oops, incorrect target_crystal_system (available options: Triclinic, Monoclinic, Orthorhombic, Tetragonal, Trigonal, Hexagonal, or Cubic)."
+                "Invalid input target_crystal_system. Please choose following options: Triclinic, Monoclinic, Orthorhombic, Tetragonal, Trigonal, Hexagonal, or Cubic."
             )
 
     # check n_residues
     if params.n_residues is None:
         raise Sorry(
-            "Oops, we have a new required parameter n_residues. Please specify number of residues of your structure in asymmetric unit (n_residues = xxx)."
+            "Number of residues is required. Please specify number of residues of your structure in asymmetric unit (n_residues = xxx)."
         )
 
     # check pixel_size
@@ -409,7 +409,7 @@ def process_input(argv=None, flag_check_exist=True):
 
             int_pickle = pickle.load(open(frame_0, "rb"))
             params.pixel_size_mm = int_pickle["pixel_size"]
-            print "Found pixel size in the integration pickles (override pixel_size_mm=%10.8f)" % (
+            print "Info: Found pixel size in the integration pickles (override pixel_size_mm=%10.8f)" % (
                 params.pixel_size_mm
             )
         except Exception:
@@ -420,7 +420,13 @@ def process_input(argv=None, flag_check_exist=True):
     # generate run_no folder
     if flag_check_exist:
         if os.path.exists(params.run_no):
-            raise Sorry("Oops, the run number %s already exists." % params.run_no)
+            print "Warning: run number %s already exists." % (params.run_no)
+            run_overwrite = raw_input("Overwrite?: N/Y (Enter for default)")
+            if run_overwrite == "Y":
+                shutil.rmtree(params.run_no)
+            else:
+                raise Sorry("Run number exists. Please specifiy different run no.")
+
         # make folders
         os.makedirs(params.run_no + "/pickles")
         os.makedirs(params.run_no + "/inputs")
@@ -461,8 +467,6 @@ def read_pickles(data):
                 pickle_list = pickle_list_file.read().split("\n")
             else:
                 # p is a glob
-                import glob
-
                 pickle_list = glob.glob(p)
             for pickle_filename in pickle_list:
                 if os.path.isfile(pickle_filename):
