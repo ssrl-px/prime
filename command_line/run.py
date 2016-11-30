@@ -68,5 +68,5 @@ if __name__ == "__main__":
         format="%(asctime)s\t%(levelname)s\t%(message)s", level=logging.DEBUG
     )
     rh = run_handler()
-    rh.run(sys.argv[:1])
+    rh.run(sys.argv[1:] if len(sys.argv) > 1 else None)
     print "Elapsed times %10.1f seconds" % (time.time() - program_starts)
