@@ -162,7 +162,6 @@ if __name__ == "__main__":
                     rz,
                     r0,
                     re,
-                    0.5,
                     two_theta,
                     alpha_angle,
                     lambda_now,
@@ -198,7 +197,7 @@ if __name__ == "__main__":
                     res=%6.2f'%(lambda_set[assigned_lambda[i]],
                     assigned_lambda[i], observations.d_spacings().data()[i]))
                     plt.show()"""
-            plt.scatter(off_mid_x_mm, off_mid_y_mm, s=10, c="g", marker="o")
+            # plt.scatter(off_mid_x_mm, off_mid_y_mm, s=10, c='g', marker='o')
             plt.scatter(off_left_x_mm, off_left_y_mm, s=20, c="b", marker="<")
             plt.scatter(off_right_x_mm, off_right_y_mm, s=20, c="r", marker=">")
             plt.xlim([-100, 100])
