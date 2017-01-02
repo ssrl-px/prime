@@ -449,7 +449,7 @@ class postref_handler(object):
         r_change = ((pres.R_final - pres.R_init) / pres.R_init) * 100
         r_xy_change = ((pres.R_xy_final - pres.R_xy_init) / pres.R_xy_init) * 100
         cc_change = ((pres.CC_final - pres.CC_init) / pres.CC_init) * 100
-        txt_postref = "{0:40} => RES:{1:5.2f} NREFL:{2:5d} R:{3:6.1f}% RXY:{4:5.1f}% CC:{5:5.1f}% G:{6:5.1f} B:{7:5.1f} CELL:{8:6.1f}{9:6.1f} {10:6.1f} {11:5.1f} {12:5.1f} {13:5.1f}".format(
+        txt_postref = "{0:40} => RES:{1:5.2f} NREFL:{2:5d} R:{3:6.1f}% RXY:{4:5.1f}% CC:{5:5.1f}% G:{6:6.4f} B:{7:5.1f} CELL:{8:6.1f}{9:6.1f} {10:6.1f} {11:5.1f} {12:5.1f} {13:5.1f}".format(
             img_filename_only + " (" + index_basis_name + ")",
             observations_original_sel.d_min(),
             len(observations_original_sel.data()),
@@ -562,7 +562,7 @@ class postref_handler(object):
                 wp = statistics.wilson_plot(
                     observations_as_f, asu_contents, e_statistics=True
                 )
-                G = wp.wilson_intensity_scale_factor * 1e3
+                G = wp.wilson_intensity_scale_factor
                 B = wp.wilson_b
             except Exception:
                 txt_exception += "warning B-factor calculation failed.\n"
@@ -654,7 +654,7 @@ class postref_handler(object):
             crystal_orientation=crystal_init_orientation,
             detector_distance_mm=detector_distance_mm,
         )
-        txt_scale_frame_by_mean_I = " {0:40} ==> RES:{1:5.2f} NREFL:{2:5d} G:{3:10.3e} B:{4:7.1f} CELL:{5:6.2f} {6:6.2f} {7:6.2f} {8:6.2f} {9:6.2f} {10:6.2f}".format(
+        txt_scale_frame_by_mean_I = " {0:40} ==> RES:{1:5.2f} NREFL:{2:5d} G:{3:6.4f} B:{4:6.1f} CELL:{5:6.2f} {6:6.2f} {7:6.2f} {8:6.2f} {9:6.2f} {10:6.2f}".format(
             img_filename_only + " (" + index_basis_name + ")",
             observations_original.d_min(),
             len(observations_original_sel.data()),
