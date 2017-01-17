@@ -117,13 +117,13 @@ def merge_frames(pres_set, iparams, avg_mode="average", mtz_out_prefix="mean_sca
             with open(iparams.run_no + "/rejections.txt", "a") as f:
                 f.write(txt_out_rejection)
             # merge all good indices
-            miller_array_ref, txt_merge_mean_table = intscal.write_output(
+            mdh, txt_merge_mean_table = intscal.write_output(
                 mdh, iparams, iparams.run_no + "/" + mtz_out_prefix, avg_mode
             )
             print txt_merge_mean_table
             print prep_output[-1]
             txt_out = txt_merge_mean_table + prep_output[-1]
-    return miller_array_ref, txt_out
+    return mdh, txt_out
 
 
 def postrefine_frames(
@@ -201,7 +201,8 @@ def run(argv):
     print txt_merge_mean
     # Always generate the mean-intensity scaled set.
     scaled_pres_set = scale_frames(frames, frame_files, iparams)
-    miller_array_ref, _txt_merge_mean = merge_frames(scaled_pres_set, iparams)
+    mdh, _txt_merge_mean = merge_frames(scaled_pres_set, iparams)
+    miller_array_ref = mdh.miller_array_merge
     txt_merge_mean += "\n" + _txt_merge_mean
     if not iparams.n_postref_cycle:
         with open(iparams.run_no + "/log.txt", "a") as f:
@@ -235,12 +236,13 @@ def run(argv):
             avg_mode,
         )
         if postref_good_pres_set:
-            miller_array_ref, _txt_merge_postref = merge_frames(
+            mdh, _txt_merge_postref = merge_frames(
                 postref_good_pres_set,
                 iparams,
                 avg_mode=avg_mode,
                 mtz_out_prefix="postref_cycle_" + str(i_iter + 1),
             )
+            miller_array_ref = mdh.miller_array_merge
             txt_merge_postref += _txt_merge_postref
         else:
             raise Usage(
@@ -262,7 +264,7 @@ def run(argv):
     )
     with open(iparams.run_no + "/log.txt", "a") as f:
         f.write(txt_out)
-    return txt_out
+    return mdh
 
 
 if __name__ == "__main__":
