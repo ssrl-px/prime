@@ -562,7 +562,7 @@ class postref_handler(object):
                 wp = statistics.wilson_plot(
                     observations_as_f, asu_contents, e_statistics=True
                 )
-                G = wp.wilson_intensity_scale_factor
+                G = wp.wilson_intensity_scale_factor * 1e2
                 B = wp.wilson_b
             except Exception:
                 txt_exception += "warning B-factor calculation failed.\n"
