@@ -69,7 +69,7 @@ class merge_data_handler(object):
     def get_r_meas(self):
         return (
             flex.sum(self.r_meas_div) / flex.sum(self.r_meas_divisor)
-            if self.get_size()
+            if flex.sum(self.r_meas_divisor)
             else 0
         )
 
