@@ -52,7 +52,7 @@ class postref_handler(object):
         txt_exception = " {0:40} ==> ".format(img_filename_only)
         # for dials integration pickles - also look for experimentxxx.json
         if "miller_index" in observations_pickle:
-            from dxtbx.model.experiment.experiment_list import ExperimentListFactory
+            from dxtbx.model.experiment_list import ExperimentListFactory
 
             exp_json_file = os.path.join(
                 os.path.dirname(pickle_filename),
