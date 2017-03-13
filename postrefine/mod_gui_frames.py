@@ -416,7 +416,7 @@ class RuntimeTab(wx.Panel):
         self.bcc_axes.bar(
             bins, binned_cc[-1], color="#2b8cbe", alpha=0.5, width=1, lw=0
         )
-        self.bcc_axes.step(bins, binned_cc[-1], color="blue", where="post")
+        self.bcc_axes.step(bins, binned_cc[-1], color="blue", where="mid")
         self.bcomp_axes.clear()
         self.bcomp_axes.bar(
             bins,
@@ -427,14 +427,14 @@ class RuntimeTab(wx.Panel):
             lw=0,
         )
         self.bcomp_axes.step(
-            bins, info["binned_completeness"][-1], color="red", where="post"
+            bins, info["binned_completeness"][-1], color="red", where="mid"
         )
         self.bmult_axes.clear()
         self.bmult_axes.bar(
             bins, info["binned_n_obs"][-1], alpha=0.5, color="#feb24c", width=1, lw=0
         )
         self.bmult_axes.step(
-            bins, info["binned_n_obs"][-1], color="orange", where="post"
+            bins, info["binned_n_obs"][-1], color="orange", where="mid"
         )
 
         # Set x-axis tick labels
@@ -743,6 +743,9 @@ class PRIMERunWindow(wx.Frame):
         self.summary_tab.title_txt.SetLabel(self.pparams.title)
         self.summary_tab.folder_txt.SetLabel(self.pparams.run_no)
 
+        # Update log
+        self.display_log()
+
         # Display summary
         self.prime_nb.AddPage(self.summary_tab, "Analysis")
         self.prime_nb.SetSelection(2)
@@ -1020,7 +1023,6 @@ class FileListCtrl(ct.CustomListCtrl):
             #                 wx.OK | wx.ICON_EXCLAMATION)
         elif os.path.isdir(path):
             inputs, _ = ginp.get_input(path, filter=False)
-            print inputs
             file_list = "\n".join(inputs)
             filelistview = dlg.TextFileView(self, title=path, contents=file_list)
             filelistview.ShowModal()
