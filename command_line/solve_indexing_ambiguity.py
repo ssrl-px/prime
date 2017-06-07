@@ -63,6 +63,9 @@ class indexing_ambiguity_handler(object):
         return False
 
     def run(self, args):
+        import time
+
+        start = time.time()
         # read inputs
         from prime.postrefine.mod_input import process_input, read_pickles
 
@@ -242,6 +245,7 @@ class indexing_ambiguity_handler(object):
         pickle.dump(sol_pickle, open(sol_fname, "wb"))
         # if more frames found, merge the sample frames to get a reference set
         # that can be used for breaking the ambiguity.
+        txt_merge_out = None
         if n_frames > iparams.indexing_ambiguity.n_selected_frames:
             print "Breaking the indexing ambiguity for the remaining images."
             old_iparams_data = iparams.data[:]
@@ -283,10 +287,14 @@ class indexing_ambiguity_handler(object):
             + sol_fname
             + "\n"
         )
-        txt_out += (
-            "Reference set used to solve the indexing ambiguity problem:\n"
-            + txt_merge_out
-        )
+        if txt_merge_out:
+            txt_out += (
+                "Reference set used to solve the indexing ambiguity problem:\n"
+                + txt_merge_out
+            )
         with open(iparams.run_no + "/log.txt", "a") as f:
             f.write(txt_out)
+        print "Indexing Ambiguity Solver Elapsed Time (s) %10.2s" % (
+            time.time() - start
+        )
         return sol_fname, iparams
