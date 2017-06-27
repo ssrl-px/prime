@@ -102,7 +102,7 @@ class PRIMEAdvancedOptions(BaseDialog):
             parent,
             label_style=label_style,
             content_style=content_style,
-            size=(600, 500),
+            size=(600, 300),
             *args,
             **kwargs
         )
@@ -121,7 +121,7 @@ class PRIMEAdvancedOptions(BaseDialog):
             btn_import=False,
             btn_export=False,
             btn_default=False,
-            ctr_size=(500, 300),
+            ctr_size=(500, 200),
             ctr_value="",
         )
         phil_box_sizer.Add(self.phil, 1, flag=wx.EXPAND | wx.ALL, border=10)
