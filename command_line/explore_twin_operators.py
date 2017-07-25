@@ -29,7 +29,7 @@ def main(data, only_merohedral):
             if ops:
                 print os.path.basename(
                     key
-                ), "%6.1f,%6.1f,%6.1f,%6.1f,%6.1f,%6.1f" % value.unit_cell().parameters(), ",".join(
+                ), "%6.1f,%6.1f,%6.1f,%6.1f,%6.1f,%6.1f" % value.unit_cell().parameters(), " ".join(
                     [op.operator.r().as_hkl() for op in ops]
                 )
             else:
