@@ -629,6 +629,11 @@ class postref_handler(object):
                     ), len(
                         partiality_init.select(i_binner)
                     )
+        # monte-carlo merge
+        if iparams.flag_monte_carlo:
+            G = 1
+            B = 0
+            partiality_init = flex.double([1] * len(partiality_init))
         # save results
         refined_params = flex.double(
             [
