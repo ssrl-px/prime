@@ -40,4 +40,4 @@ if __name__ == "__main__":
         os.path.join(iparams.run_no, "log_doMerge.out"),
         qCmd,
     ]
-call(cmd)
+    call(cmd)
