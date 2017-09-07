@@ -3,7 +3,7 @@ from __future__ import division
 """
 Author      : Lyubimov, A.Y.
 Created     : 05/01/2016
-Last Changed: 04/03/2017
+Last Changed: 09/07/2017
 Description : PRIME GUI frames module
 """
 
@@ -583,9 +583,9 @@ class PRIMERunWindow(wx.Frame):
         title,
         params,
         prime_file,
-        out_file,
         mp_method="python",
         command=None,
+        recover=False,
     ):
         wx.Frame.__init__(
             self,
@@ -669,7 +669,8 @@ class PRIMERunWindow(wx.Frame):
         # Button bindings
         self.Bind(wx.EVT_TOOL, self.onAbort, self.tb_btn_abort)
 
-        self.run()
+        if not recover:
+            self.run()
 
     def onStatusBarResize(self, e):
         rect = self.sb.GetFieldRect(0)
@@ -702,6 +703,16 @@ class PRIMERunWindow(wx.Frame):
         )
         prime_process.start()
         self.timer.Start(5000)
+
+    def recover(self):
+        self.status_txt.SetForegroundColour("black")
+        self.status_txt.SetLabel(
+            "Displaying results from {}" "".format(self.pparams.run_no)
+        )
+
+        # Plot results
+        self.plot_runtime_results()
+        self.plot_final_results()
 
     def display_log(self):
         """Display PRIME stdout."""
@@ -775,6 +786,13 @@ class PRIMERunWindow(wx.Frame):
         self.prime_nb.SetSelection(2)
 
     def onTimer(self, e):
+        # If not done yet, write settings file for this run
+        settings_file = os.path.join(self.pparams.run_no, "settings.phil")
+        if not os.path.isfile(settings_file):
+            with open(self.prime_file, "r") as pf:
+                settings = pf.read()
+            with open(settings_file, "w") as sf:
+                sf.write(settings)
 
         # Inspect output and update gauge
         self.gauge_prime.Show()
@@ -794,6 +812,10 @@ class PRIMERunWindow(wx.Frame):
 
         # Update log
         self.display_log()
+
+        # Sense aborted run
+        if self.aborted:
+            self.final_step()
 
         # Sense end of cycle
         if self.current_cycle >= self.pparams.n_postref_cycle:
