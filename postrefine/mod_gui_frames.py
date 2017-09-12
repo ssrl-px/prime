@@ -472,7 +472,7 @@ class RuntimeTab(wx.Panel):
             "family": "monospace",
             "color": "darkblue",
             "weight": "normal",
-            "size": 13,
+            "size": 11,
             "linespacing": 2.5,
         }
         self.rej_table.text(
