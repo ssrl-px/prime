@@ -11,6 +11,7 @@ from mod_partiality import partiality_handler
 from mod_lbfgs_partiality import lbfgs_partiality_handler
 from mod_mx import mx_handler
 import math, os
+from mod_input import read_frame
 
 
 class postref_handler(object):
@@ -331,7 +332,7 @@ class postref_handler(object):
         self, frame_no, pickle_filename, iparams, miller_array_ref, pres_in, avg_mode
     ):
         # 1. Prepare data
-        observations_pickle = pickle.load(open(pickle_filename, "rb"))
+        observations_pickle = read_frame(pickle_filename)
         pickle_filepaths = pickle_filename.split("/")
         img_filename_only = pickle_filepaths[len(pickle_filepaths) - 1]
         txt_exception = " {0:40} ==> ".format(img_filename_only)
@@ -483,7 +484,7 @@ class postref_handler(object):
         return pres, txt_postref
 
     def calc_mean_intensity(self, pickle_filename, iparams, avg_mode):
-        observations_pickle = pickle.load(open(pickle_filename, "rb"))
+        observations_pickle = read_frame(pickle_filename)
         pickle_filepaths = pickle_filename.split("/")
         txt_exception = " {0:40} ==> ".format(
             pickle_filepaths[len(pickle_filepaths) - 1]
@@ -514,7 +515,7 @@ class postref_handler(object):
     def scale_frame_by_mean_I(
         self, frame_no, pickle_filename, iparams, mean_of_mean_I, avg_mode
     ):
-        observations_pickle = pickle.load(open(pickle_filename, "rb"))
+        observations_pickle = read_frame(pickle_filename)
         pickle_filepaths = pickle_filename.split("/")
         img_filename_only = pickle_filepaths[len(pickle_filepaths) - 1]
         inputs, txt_organize_input = self.organize_input(
