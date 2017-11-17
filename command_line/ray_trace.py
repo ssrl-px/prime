@@ -142,6 +142,7 @@ if __name__ == "__main__":
                     rz,
                     r0,
                     re,
+                    0,
                     two_theta,
                     alpha_angle,
                     lambda_now,
@@ -171,15 +172,19 @@ if __name__ == "__main__":
                     assigned_lambda[i] == 0
                     or assigned_lambda[i] == len(lambda_template) - 1
                 ):
-                    """print p_array[i,:], assigned_lambda[i]
-                    plt.plot(lambda_set, p_array[i,:]) plt.title('Best
-                    wavelength=%8.6f (i=%2.0f)
-                    res=%6.2f'%(lambda_set[assigned_lambda[i]],
-                    assigned_lambda[i], observations.d_spacings().data()[i]))
-                    plt.show()"""
-            # plt.scatter(off_mid_x_mm, off_mid_y_mm, s=10, c='g', marker='o')
+                    dummy = 0
+                    # uncomment below to see best wavelength for each spot
+                    """
+          print p_array[i,:], assigned_lambda[i]
+          plt.plot(lambda_set, p_array[i,:])
+          plt.title('Best wavelength=%8.6f (i=%2.0f) res=%6.2f'%(lambda_set[assigned_lambda[i]], assigned_lambda[i], observations.d_spacings().data()[i]))
+          plt.show()
+          """
+            # plot which part of the spectrum this reflection is close to
+            plt.scatter(off_mid_x_mm, off_mid_y_mm, s=10, c="g", marker="o")
             plt.scatter(off_left_x_mm, off_left_y_mm, s=20, c="b", marker="<")
             plt.scatter(off_right_x_mm, off_right_y_mm, s=20, c="r", marker=">")
+            plt.title("Ray Trace Result o=right on, <=high energy, > low energy")
             plt.xlim([-100, 100])
             plt.ylim([-100, 100])
             plt.grid(True)
