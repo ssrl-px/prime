@@ -274,7 +274,7 @@ n_postref_sub_cycle = 1
 n_rejection_cycle = 1
   .type = int
   .help = No. of cycles for the outlier rejection.
-sigma_rejection = 3
+sigma_rejection = 5
   .type = float
   .help = Sigma level for outlier rejection.
 n_bins = 20
@@ -378,6 +378,9 @@ isoform_cluster
     .type = int
     .help = No. of frames used in Auto solution mode. The rest of the frame data will be determined against this merged dataset.
 }
+rejections = None
+  .type = str
+  .help = Dict of integration filenames and their rejected miller indices.
 """
 )
 
@@ -469,6 +472,10 @@ def process_input(argv=None, flag_mkdir=True):
             )
         except Exception:
             raise InvalidPixelSize, "Error: Pixel size in millimeter is required. Use cctbx.image_viewer to view one of your images and note down the value (e.g. for marccd, set pixel_size_mm=0.079346)."
+
+    # check sigma rejection
+    if params.sigma_rejection < 5:
+        print ("Warning: sigma below 5 will result in discarding too many reflections")
 
     # generate run_no folder
     if not params.run_no:
