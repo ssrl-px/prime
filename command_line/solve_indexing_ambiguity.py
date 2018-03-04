@@ -6,7 +6,7 @@ Created     : 8/15/2016
 Description : Command line for solving indexing ambiguity
 """
 import numpy as np
-from libtbx.easy_mp import pool_map
+from libtbx.easy_mp import parallel_map
 from prime.index_ambiguity.mod_indexing_ambiguity import indamb_handler
 import cPickle as pickle
 from prime.index_ambiguity.mod_kmeans import kmeans_handler
@@ -107,7 +107,7 @@ class indexing_ambiguity_handler(object):
                         (i, frame_files[i], iparams, miller_array_ref)
                         for i in range(n_frames)
                     ]
-                    cc_results = pool_map(
+                    cc_results = parallel_map(
                         iterable=frames,
                         func=solve_with_mtz_mproc,
                         processes=iparams.n_processors,
@@ -128,7 +128,7 @@ class indexing_ambiguity_handler(object):
         ]
         # get observations list
         print "Reading observations"
-        alt_dict_results = pool_map(
+        alt_dict_results = parallel_map(
             iterable=frames, func=get_obs_mproc, processes=iparams.n_processors
         )
         frame_dup_files = []
@@ -147,7 +147,7 @@ class indexing_ambiguity_handler(object):
         ]
         # calculate r
         print "Calculating R"
-        calc_r_results = pool_map(
+        calc_r_results = parallel_map(
             iterable=frames, func=calculate_r_mproc, processes=iparams.n_processors
         )
         frame_dup_files = []
@@ -189,7 +189,7 @@ class indexing_ambiguity_handler(object):
         ]
         # get observations list
         print "Re-reading observations"
-        alt_dict_results = pool_map(
+        alt_dict_results = parallel_map(
             iterable=frames, func=get_obs_mproc, processes=iparams.n_processors
         )
         frame_dup_files = []
@@ -208,7 +208,7 @@ class indexing_ambiguity_handler(object):
         ]
         # calculate r
         print "Re-calculating R"
-        calc_r_results = pool_map(
+        calc_r_results = parallel_map(
             iterable=frames, func=calculate_r_mproc, processes=iparams.n_processors
         )
         frame_dup_files = []
@@ -270,7 +270,7 @@ class indexing_ambiguity_handler(object):
                 (i, frame_files_remain[i], iparams, miller_array_ref)
                 for i in range(len(frame_files_remain))
             ]
-            cc_results = pool_map(
+            cc_results = parallel_map(
                 iterable=frames,
                 func=solve_with_mtz_mproc,
                 processes=iparams.n_processors,
