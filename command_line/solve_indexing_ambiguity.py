@@ -77,7 +77,10 @@ class indexing_ambiguity_handler(object):
         # if solution pickle is given, return the file name
         if iparams.indexing_ambiguity.index_basis_in is not None:
             if iparams.indexing_ambiguity.index_basis_in.endswith(".pickle"):
-                return iparams.indexing_ambiguity.index_basis_in, iparams
+                sol_pickle = pickle.load(
+                    open(iparams.indexing_ambiguity.index_basis_in, "rb")
+                )
+                return sol_pickle, iparams
         # read all integration pickles
         frame_files = read_pickles(iparams.data)
         n_frames = len(frame_files)
@@ -117,7 +120,7 @@ class indexing_ambiguity_handler(object):
                         pickle_filename, index_basis = result
                         sol_pickle[pickle_filename] = index_basis
                     pickle.dump(sol_pickle, open(sol_fname, "wb"))
-                    return sol_fname, iparams
+                    return sol_pickle, iparams
         # *************************************************
         # solve with Brehm & Diederichs - sample size n_sample_frames then bootstrap the rest
         frames = [
@@ -297,4 +300,4 @@ class indexing_ambiguity_handler(object):
         print "Indexing Ambiguity Solver Elapsed Time (s) %10.2s" % (
             time.time() - start
         )
-        return sol_fname, iparams
+        return sol_pickle, iparams
