@@ -313,6 +313,9 @@ class postref_handler(object):
         pickle_filepaths = pickle_filename.split("/")
         img_filename_only = pickle_filepaths[len(pickle_filepaths) - 1]
         txt_exception = " {0:40} ==> ".format(img_filename_only)
+        if observations_pickle is None:
+            txt_exception += "empty or bad input file\n"
+            return None, txt_exception
         inputs, txt_organize_input = self.organize_input(
             observations_pickle, iparams, avg_mode, pickle_filename=pickle_filename
         )
@@ -466,6 +469,9 @@ class postref_handler(object):
         txt_exception = " {0:40} ==> ".format(
             pickle_filepaths[len(pickle_filepaths) - 1]
         )
+        if observations_pickle is None:
+            txt_exception += "empty or bad input file\n"
+            return None, txt_exception
         inputs, txt_organize_input = self.organize_input(
             observations_pickle, iparams, avg_mode, pickle_filename=pickle_filename
         )
@@ -495,10 +501,13 @@ class postref_handler(object):
         observations_pickle = read_frame(pickle_filename)
         pickle_filepaths = pickle_filename.split("/")
         img_filename_only = pickle_filepaths[len(pickle_filepaths) - 1]
+        txt_exception = " {0:40} ==> ".format(img_filename_only)
+        if observations_pickle is None:
+            txt_exception += "empty or bad input file\n"
+            return None, txt_exception
         inputs, txt_organize_input = self.organize_input(
             observations_pickle, iparams, avg_mode, pickle_filename=pickle_filename
         )
-        txt_exception = " {0:40} ==> ".format(img_filename_only)
         if inputs is not None:
             observations_original, alpha_angle, spot_pred_x_mm, spot_pred_y_mm, detector_distance_mm, wavelength, crystal_init_orientation = (
                 inputs
