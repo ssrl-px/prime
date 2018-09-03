@@ -560,7 +560,7 @@ class intensities_scaler(object):
                             )
                             < 10
                         )
-                    except Exception, e:
+                    except Exception as e:
                         print "Warning: outlier rejection by bins failed because of floating point."
                         print e
                         i_filter = flex.bool([True] * len(I_obs_bin))
@@ -602,7 +602,7 @@ class intensities_scaler(object):
                     observations_as_f, asu_contents, e_statistics=True
                 )
                 B_merged = wp.wilson_b
-            except Exception, e:
+            except Exception as e:
                 B_merged = 0
                 print "Warning: b-factor calculation in mod_util failed. Reset b-factor to 0"
                 print e

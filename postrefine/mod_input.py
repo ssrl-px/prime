@@ -429,7 +429,7 @@ def process_input(argv=None, flag_mkdir=True):
                 else:
                     try:
                         user_phil.append(iotbx.phil.parse(arg))
-                    except RuntimeError, e:
+                    except RuntimeError as e:
                         raise Sorry(
                             "Unrecognized argument '%s' (error: %s)" % (arg, str(e))
                         )

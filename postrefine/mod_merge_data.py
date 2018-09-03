@@ -124,7 +124,7 @@ class merge_data_handler(object):
                 flex.sum(flex.abs(self.I_even - self.I_odd))
                 / (flex.sum(self.I_even + self.I_odd) * 0.5)
             )
-        except Exception, e:
+        except Exception as e:
             print "Warning: R_split calculation failed."
             print e
             r_split_bin = 0
