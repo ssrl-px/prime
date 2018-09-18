@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 
 # LIBTBX_SET_DISPATCHER_NAME prime.postrefine
 """
@@ -236,7 +237,7 @@ def run(argv):
     txt_merge_postref = ""
     postref_pres_set = [None] * len(frames)
     avg_mode = "weighted"
-    for i_iter in xrange(iparams.n_postref_cycle):
+    for i_iter in range(iparams.n_postref_cycle):
         if i_iter == (iparams.n_postref_cycle - 1):
             avg_mode = "final"
         postref_good_pres_set, postref_pres_set, _txt_merge_postref = postrefine_frames(

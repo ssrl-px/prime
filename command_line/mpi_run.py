@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 
 # LIBTBX_SET_DISPATCHER_NAME prime.mpi_run
 """
@@ -76,7 +77,7 @@ def master(frame_token, iparams, activity):
         for pres in results:
             if pres:
                 pres_dict[pres.pickle_filename] = pres
-        for i in xrange(len(frame_files)):
+        for i in range(len(frame_files)):
             rankreq = comm.recv(source=MPI.ANY_SOURCE)
             comm.send(
                 (
@@ -238,7 +239,7 @@ def run(argv):
         results = None
     n_postref_cycle = comm.bcast(n_postref_cycle, root=0)
     avg_mode = "weighted"
-    for i_iter in xrange(n_postref_cycle):
+    for i_iter in range(n_postref_cycle):
         comm.Barrier()
         if i_iter == n_postref_cycle - 1:
             avg_mode = "final"
