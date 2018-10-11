@@ -48,7 +48,8 @@ class Plotter(object):
             self.info["binned_resolution"][-1][-1],
         )
         t1_rlabels = [
-            u.to_unicode(u"No. of images"),
+            u.to_unicode(u"No. of accepted images"),
+            u.to_unicode(u"No. of rejected images"),
             u.to_unicode(u"Space Group"),
             u.to_unicode(u"Cell dimensions"),
             u.to_unicode(u"  a, b, c ({})  ".format(A)),
@@ -61,8 +62,16 @@ class Plotter(object):
             u.to_unicode(u"R_merge"),
         ]
 
+        n_frames_bad = (
+            self.info["n_frames_bad_cc"][-1]
+            + self.info["n_frames_bad_G"][-1]
+            + self.info["n_frames_bad_uc"][-1]
+            + self.info["n_frames_bad_gamma_e"][-1]
+            + self.info["n_frames_bad_SE"][-1]
+        )
         t1_data = [
             ["{}".format(self.info["n_frames_good"][-1])],
+            ["{}".format(n_frames_bad)],
             ["{}".format(self.info["space_group_info"][-1].symbol_and_number())],
             [""],
             ["{}".format(uc_edges)],
