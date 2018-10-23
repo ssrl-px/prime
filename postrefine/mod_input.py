@@ -29,7 +29,7 @@ class InvalidNumberOfResidues(ReadInputError):
 import iotbx.phil
 from libtbx.utils import Usage, Sorry
 import sys, os, shutil, glob, tarfile
-import cPickle as pickle
+from six.moves import cPickle as pickle
 
 master_phil = iotbx.phil.parse(
     """
@@ -463,8 +463,6 @@ def process_input(argv=None, flag_mkdir=True):
         try:
             frame_files = read_pickles(params.data)
             frame_0 = frame_files[0]
-            import cPickle as pickle
-
             int_pickle = read_frame(frame_0)
             params.pixel_size_mm = int_pickle["pixel_size"]
             print "Info: Found pixel size in the integration pickles (override pixel_size_mm=%10.8f)" % (

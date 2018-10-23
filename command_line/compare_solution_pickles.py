@@ -2,7 +2,7 @@ from __future__ import division
 
 # LIBTBX_SET_DISPATCHER_NAME prime.compare_solution_pickles
 
-import cPickle as pickle
+from six.moves import cPickle as pickle
 import argparse
 
 
