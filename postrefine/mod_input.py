@@ -1,6 +1,8 @@
 from __future__ import division
 
 """read PRIME input"""
+from __future__ import print_function
+
 # Define exceptions
 class ReadInputError(Exception):
     pass
@@ -421,7 +423,7 @@ def process_input(argv=None, flag_mkdir=True):
                 user_phil.append(iotbx.phil.parse("""data=\"%s\" """ % arg))
             else:
                 if arg == "--help" or arg == "-h":
-                    print txt_help
+                    print(txt_help)
                     master_phil.show(attributes_level=1)
                     raise Usage(
                         "Run prime.run to generate a list of initial parameters."
@@ -471,8 +473,9 @@ def process_input(argv=None, flag_mkdir=True):
             frame_0 = frame_files[0]
             int_pickle = read_frame(frame_0)
             params.pixel_size_mm = int_pickle["pixel_size"]
-            print "Info: Found pixel size in the integration pickles (override pixel_size_mm=%10.8f)" % (
-                params.pixel_size_mm
+            print(
+                "Info: Found pixel size in the integration pickles (override pixel_size_mm=%10.8f)"
+                % (params.pixel_size_mm)
             )
         except Exception:
             raise InvalidPixelSize(
@@ -481,7 +484,7 @@ def process_input(argv=None, flag_mkdir=True):
 
     # check sigma rejection
     if params.sigma_rejection < 5:
-        print ("Warning: sigma below 5 will result in discarding too many reflections")
+        print("Warning: sigma below 5 will result in discarding too many reflections")
 
     # generate run_no folder
     if not params.run_no:
@@ -493,7 +496,7 @@ def process_input(argv=None, flag_mkdir=True):
             new_run_no = max([int(run_no.split("_")[-1]) for run_no in all_runs]) + 1
         params.run_no = default_run + str(new_run_no)
     elif os.path.exists(params.run_no):
-        print "Warning: run number %s already exists." % (params.run_no)
+        print("Warning: run number %s already exists." % (params.run_no))
         run_overwrite = raw_input("Overwrite?: N/Y (Enter for default)")
         if run_overwrite == "Y":
             shutil.rmtree(params.run_no)
@@ -579,9 +582,9 @@ def read_frame(frame_file):
             tar_member = tarf.extractfile(member=tarf.getmembers()[int(tar_index)])
             observations_pickle = pickle.load(tar_member)
     except Exception:
-        print "Warning: unable to read %s" % (frame_file)
+        print("Warning: unable to read %s" % (frame_file))
         pass
     if any([len(obs.data()) == 0 for obs in observations_pickle["observations"]]):
-        print "Empty file %s" % (frame_file)
+        print("Empty file %s" % (frame_file))
         return
     return observations_pickle

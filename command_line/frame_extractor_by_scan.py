@@ -6,6 +6,7 @@ Author      : Uervirojnangkoorn, M.
 Desc        : Taking the original code from xfel/command_line/frame_extractor.py
               and adding by scan so that each scan is output as a single pickle file.
 """
+from __future__ import print_function
 
 from dials.array_family import flex
 from dials.util.options import (
@@ -65,7 +66,7 @@ class ConstructFrame(object):
         self.gonio = experiment.goniometer
         self.scan = experiment.scan
         self.img_sweep = experiment.imageset
-        print scan_no, len(self.reflections)
+        print(scan_no, len(self.reflections))
 
     # experiment-dependent components ---------------------------------------------------------------------------
 
@@ -241,7 +242,7 @@ class ConstructFrameFromFiles(ConstructFrame):
             check_format=False,
         )
         if importer.unhandled:
-            print "unable to process:", importer.unhandled
+            print("unable to process:", importer.unhandled)
         ConstructFrame.__init__(
             self,
             flatten_reflections(importer.reflections)[0],
@@ -274,7 +275,7 @@ if __name__ == "__main__":
         check_format=False,
     )
     if importer.unhandled:
-        print "unable to process:", importer.unhandled
+        print("unable to process:", importer.unhandled)
     experiment = flatten_experiments(importer.experiments)[0]
     scan = experiment.scan
     for scan_no in xrange(scan.get_image_range()[0], scan.get_image_range()[1]):

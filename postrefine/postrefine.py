@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 from cctbx import miller, crystal
 from six.moves import cPickle as pickle
@@ -92,7 +93,7 @@ class postref_handler(object):
                 crystal_init_orientation = crystal_orientation(O * R, basis_type.direct)
             else:
                 txt_exception += exp_json_file + " not found"
-                print txt_exception
+                print(txt_exception)
                 return None, txt_exception
         else:
             # for cctbx.xfel proceed as usual
@@ -119,8 +120,10 @@ class postref_handler(object):
             fx = 1 - iparams.polarization_horizontal_fraction
             fy = 1 - fx
             if fx > 1.0 or fx < 0:
-                print "Horizontal polarization fraction is not correct. The value must be >= 0 and <= 1"
-                print "No polarization correction. Continue with post-refinement"
+                print(
+                    "Horizontal polarization fraction is not correct. The value must be >= 0 and <= 1"
+                )
+                print("No polarization correction. Continue with post-refinement")
             else:
                 phi_angle_obs = flex.double(
                     [
@@ -190,7 +193,7 @@ class postref_handler(object):
                 "Mismatch spacegroup (%6.2f,%6.2f,%6.2f,%6.2f,%6.2f,%6.2f)"
                 % (a, b, c, alpha, beta, gamma)
             )
-            print txt_exception
+            print(txt_exception)
             return None, txt_exception
         # reset systematic absence
         sys_absent_negate_flags = flex.bool(
@@ -459,7 +462,7 @@ class postref_handler(object):
             beta_fin,
             gamma_fin,
         )
-        print txt_postref
+        print(txt_postref)
         txt_postref += "\n"
         return pres, txt_postref
 
@@ -609,12 +612,12 @@ class postref_handler(object):
             for i in range(1, n_bins + 1):
                 i_binner = binner_indices == i
                 if len(observations_original.data().select(i_binner)) > 0:
-                    print binner.bin_d_range(i)[1], flex.mean(
-                        partiality_init.select(i_binner)
-                    ), flex.mean(rs_init.select(i_binner)), flex.mean(
-                        rh_init.select(i_binner)
-                    ), len(
-                        partiality_init.select(i_binner)
+                    print(
+                        binner.bin_d_range(i)[1],
+                        flex.mean(partiality_init.select(i_binner)),
+                        flex.mean(rs_init.select(i_binner)),
+                        flex.mean(rh_init.select(i_binner)),
+                        len(partiality_init.select(i_binner)),
                     )
         # monte-carlo merge
         if iparams.flag_monte_carlo:
@@ -669,6 +672,6 @@ class postref_handler(object):
             uc_params[4],
             uc_params[5],
         )
-        print txt_scale_frame_by_mean_I
+        print(txt_scale_frame_by_mean_I)
         txt_scale_frame_by_mean_I += "\n"
         return pres, txt_scale_frame_by_mean_I

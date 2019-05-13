@@ -4,6 +4,7 @@ from __future__ import division
 """
 Find initial scaling factors for all integration results
 """
+from __future__ import print_function
 from mpi4py import MPI
 import sys, os
 from prime.postrefine.mod_input import process_input, read_pickles
@@ -53,7 +54,7 @@ def master(frame_token, iparams, activity):
         n_batch = int(1e5 / (len(cpo[1]) / cpo[0]))
         if n_batch < 1:
             n_batch = 1
-        print "Merging with %d batch size" % (n_batch)
+        print("Merging with %d batch size" % (n_batch))
         indices = range(0, cpo[0], n_batch)
         for i in indices:
             rankreq = comm.recv(source=MPI.ANY_SOURCE)
@@ -94,9 +95,8 @@ def master(frame_token, iparams, activity):
                 ),
                 dest=rankreq,
             )
-    print "Master for %s is completed. Time to stop all %d clients" % (
-        activity,
-        size - 1,
+    print(
+        "Master for %s is completed. Time to stop all %d clients" % (activity, size - 1)
     )
     # stop clients
     for rankreq in range(size - 1):
@@ -148,9 +148,9 @@ def merge(pres_result, iparams, txt_out_prefix, output_prefix, avg_mode):
     # pre-merge task
     if rank == 0:
         pres_results = sum(pres_result, [])
-        print "Scaling/post-refinement is done on %d cores for %d frames" % (
-            size,
-            len(pres_results),
+        print(
+            "Scaling/post-refinement is done on %d cores for %d frames"
+            % (size, len(pres_results))
         )
         master((pres_results, avg_mode), iparams, "pre_merge")
         premerge_result = []
@@ -161,7 +161,7 @@ def merge(pres_result, iparams, txt_out_prefix, output_prefix, avg_mode):
     comm.Barrier()
     # merge task
     if rank == 0:
-        print "Pre-merge is done on %d cores" % (len(premerge_result))
+        print("Pre-merge is done on %d cores" % (len(premerge_result)))
         master((premerge_result, avg_mode), iparams, "merge")
         merge_result = []
     else:
@@ -170,7 +170,7 @@ def merge(pres_result, iparams, txt_out_prefix, output_prefix, avg_mode):
     merge_result = comm.gather(merge_result, root=0)
     comm.Barrier()
     if rank == 0:
-        print "Merge completed on %d cores" % (len(merge_result))
+        print("Merge completed on %d cores" % (len(merge_result)))
         merge_results = sum(merge_result, [])
         mdh = merge_data_handler()
         txt_out_rejection = ""
@@ -193,7 +193,7 @@ def merge(pres_result, iparams, txt_out_prefix, output_prefix, avg_mode):
         mdh, txt_merge_mean_table = its.write_output(
             mdh, iparams, os.path.join(iparams.run_no, output_prefix), avg_mode
         )
-        print txt_merge_mean_table
+        print(txt_merge_mean_table)
         # write log output
         with open(os.path.join(iparams.run_no, "log.txt"), "a") as f:
             f.write(txt_out_prefix + txt_merge_mean_table)
@@ -213,7 +213,7 @@ def run(argv):
         iparams, txt_out_input = process_input(argv)
         iparams.flag_volume_correction = False
         iparams.flag_hush = True
-        print txt_out_input
+        print(txt_out_input)
         frame_files = read_pickles(iparams.data)
     else:
         iparams = None
@@ -243,7 +243,7 @@ def run(argv):
         if i_iter == n_postref_cycle - 1:
             avg_mode = "final"
         if rank == 0:
-            print "Start post-refinement cycle %d" % (i_iter + 1)
+            print("Start post-refinement cycle %d" % (i_iter + 1))
             master(
                 (frame_files, mdh.miller_array_merge, results, avg_mode),
                 iparams,

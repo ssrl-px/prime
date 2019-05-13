@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 
 class pdb_handler(object):
@@ -16,7 +17,7 @@ class pdb_handler(object):
     def print_file_content(self):
 
         for line in self.data_pdb:
-            print line
+            print(line)
 
     def atom_stats(self):
 
