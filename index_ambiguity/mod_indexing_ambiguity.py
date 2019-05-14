@@ -84,9 +84,10 @@ class indamb_handler(object):
                 cc_set.append(corr.coefficient())
             i_best = np.argmax(cc_set)
             txt_out = " {0:40} ==> CC:{1:6.2f}".format(
-                img_filename_only + " " + alternates.keys()[i_best], cc_set[i_best]
+                img_filename_only + " " + list(alternates.keys())[i_best],
+                cc_set[i_best],
             )
-            return alternates.keys()[i_best], txt_out
+            return list(alternates.keys())[i_best], txt_out
         except Exception:
             txt_out = " {0:40} ==> CC:{1:6.2f}".format(
                 img_filename_only + " (h,k,l)", 0
