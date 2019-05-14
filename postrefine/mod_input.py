@@ -1,7 +1,5 @@
-from __future__ import division
-
-"""read PRIME input"""
-from __future__ import print_function
+"""read PRIME input."""
+from __future__ import absolute_import, division, print_function
 
 # Define exceptions
 class ReadInputError(Exception):
