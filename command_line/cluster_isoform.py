@@ -2,6 +2,7 @@
 """cluster diffraction images by."""
 from __future__ import absolute_import, division, print_function
 import six
+from six.moves import range
 
 __author__ = "Monarin Uervirojnangkoorn, monarin@gmail.com"
 
