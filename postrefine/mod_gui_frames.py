@@ -243,12 +243,24 @@ class RuntimeTab(wx.Panel):
         wx.Panel.__init__(self, parent)
         self.pparams = params
 
-        self.prime_sizer = wx.BoxSizer(wx.VERTICAL)
-        self.prime_figure = Figure()
-        self.prime_figure.patch.set_alpha(0)
+        # For some reason MatPlotLib 2.2.3 on GTK 6 does not create transparent
+        # patches (tried set_visible(False), set_facecolor("none"), set_alpha(0),
+        # to no avail). Thus, for GTK only, setting facecolor to background
+        # color; otherwide to 'none'. This may change if other tests reveal the
+        # same problem in other systems.
+        if wx.Platform == "__WXGTK__":
+            bg_color = [i / 255 for i in self.GetBackgroundColour()]
+        else:
+            bg_color = "none"
 
         plt.rc("font", family="sans-serif", size=10)
         plt.rc("mathtext", default="regular")
+
+        # Create figure
+        self.prime_sizer = wx.BoxSizer(wx.VERTICAL)
+        self.prime_figure = Figure()
+        # self.prime_figure.patch.set_alpha(0)
+        self.prime_figure.patch.set_facecolor(color=bg_color)
 
         # Create nested GridSpec
         gsp = gridspec.GridSpec(2, 2, height_ratios=[2, 3])
@@ -276,10 +288,15 @@ class RuntimeTab(wx.Panel):
         self.cc_axes.set_title(r"$CC_{1/2}$", fontsize=12)
         self.cc_axes.set_xlabel("Cycle")
         self.cc_axes.set_ylabel(r"$CC_{1/2}$ (%)")
+        self.cc_axes.ticklabel_format(axis="y", style="plain")
+
         self.comp_axes.set_title("Completeness / Multiplicity", fontsize=12)
         self.comp_axes.set_xlabel("Cycle")
         self.comp_axes.set_ylabel("Completeness (%)")
         self.mult_axes.set_ylabel("# of Observations")
+        self.comp_axes.ticklabel_format(axis="y", style="plain")
+        self.mult_axes.ticklabel_format(axis="y", style="plain")
+
         self.bcc_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
         self.bcc_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
 
@@ -297,8 +314,6 @@ class RuntimeTab(wx.Panel):
         self.bmult_axes.set_xlabel("Resolution ($\AA$)")
         self.bmult_axes.set_ylabel("# of Obs")
 
-        self.prime_sizer.Layout()
-
     def draw_plots(self, info, total_cycles):
 
         # Plot mean CC1/2
@@ -307,7 +322,6 @@ class RuntimeTab(wx.Panel):
         self.cc_axes.clear()
         self.cc_axes.set_xlim(0, total_cycles)
         self.cc_axes.set_ylim(0, 100)
-        self.cc_axes.ticklabel_format(axis="y", style="plain")
         self.cc_axes.plot(cycles, meanCC, "o", c="#2b8cbe", ls="-", lw=3)
 
         # Plot mean completeness and multiplicity
@@ -319,8 +333,6 @@ class RuntimeTab(wx.Panel):
         self.comp_axes.set_xlim(0, total_cycles)
         self.comp_axes.set_ylim(0, 100)
         self.mult_axes.set_xlim(0, total_cycles)
-        self.comp_axes.ticklabel_format(axis="y", style="plain")
-        self.mult_axes.ticklabel_format(axis="y", style="plain")
         self.comp_axes.plot(cycles, mean_comp, c="#f03b20", ls="-", lw=2)
         comp = self.comp_axes.scatter(
             cycles, mean_comp, marker="o", s=25, edgecolors="black", color="#f03b20"
@@ -409,7 +421,8 @@ class RuntimeTab(wx.Panel):
         )
 
         # Redraw canvas
-        self.canvas.draw()
+        self.canvas.draw_idle()
+        self.canvas.Refresh()
 
 
 class SummaryTab(wx.Panel):
