@@ -4,7 +4,7 @@ from past.builtins import range
 """
 Author      : Lyubimov, A.Y.
 Created     : 05/01/2016
-Last Changed: 06/20/2019
+Last Changed: 07/17/2019
 Description : PRIME GUI dialogs module
 """
 
@@ -16,7 +16,7 @@ from wxtbx import bitmaps
 from iotbx import phil as ip
 
 from iota.components.iota_utils import WxFlags, Capturing
-from iota.components.gui.base import BaseDialog, BaseBackendDialog
+from iota.components.gui.base import FormattedDialog, BaseBackendDialog
 import iota.components.gui.controls as ct
 
 # Platform-specific stuff
@@ -460,9 +460,9 @@ class PRIMEAdvancedOptions(PRIMEBaseBackendDialog):
         e.Skip()
 
 
-class PRIMEPreferences(BaseDialog):
+class PRIMEPreferences(FormattedDialog):
     def __init__(self, parent, phil=None, *args, **kwargs):
-        BaseDialog.__init__(self, parent, *args, **kwargs)
+        FormattedDialog.__init__(self, parent, *args, **kwargs)
 
         self.pparams = phil.extract()
         self.pref_phil = None
@@ -608,7 +608,7 @@ class PRIMEPreferences(BaseDialog):
         e.Skip()
 
 
-class TextFileView(BaseDialog):
+class TextFileView(FormattedDialog):
     def __init__(
         self,
         parent,
@@ -621,7 +621,7 @@ class TextFileView(BaseDialog):
 
         dlg_style = wx.CAPTION | wx.CLOSE_BOX | wx.RESIZE_BORDER | wx.STAY_ON_TOP
 
-        BaseDialog.__init__(
+        FormattedDialog.__init__(
             self,
             parent,
             style=dlg_style,
@@ -643,13 +643,13 @@ class TextFileView(BaseDialog):
         self.main_sizer.Add(self.txt_panel, 1, flag=wx.EXPAND | wx.ALL, border=10)
 
 
-class RecoveryDialog(BaseDialog):
+class RecoveryDialog(FormattedDialog):
     def __init__(
         self, parent, label_style="bold", content_style="normal", *args, **kwargs
     ):
 
         dlg_style = wx.CAPTION | wx.CLOSE_BOX | wx.RESIZE_BORDER | wx.STAY_ON_TOP
-        BaseDialog.__init__(
+        FormattedDialog.__init__(
             self,
             parent,
             style=dlg_style,
