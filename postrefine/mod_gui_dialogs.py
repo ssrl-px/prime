@@ -16,7 +16,7 @@ from wxtbx import bitmaps
 from iotbx import phil as ip
 
 from iota.components.iota_utils import WxFlags, Capturing
-from iota.components.gui.base import FormattedDialog, BaseBackendDialog
+from iota.components.gui.base import BaseBackendDialog, IOTABaseDialog
 import iota.components.gui.controls as ct
 
 # Platform-specific stuff
@@ -460,9 +460,9 @@ class PRIMEAdvancedOptions(PRIMEBaseBackendDialog):
         e.Skip()
 
 
-class PRIMEPreferences(FormattedDialog):
+class PRIMEPreferences(IOTABaseDialog):
     def __init__(self, parent, phil=None, *args, **kwargs):
-        FormattedDialog.__init__(self, parent, *args, **kwargs)
+        IOTABaseDialog.__init__(self, parent, *args, **kwargs)
 
         self.pparams = phil.extract()
         self.pref_phil = None
@@ -608,7 +608,7 @@ class PRIMEPreferences(FormattedDialog):
         e.Skip()
 
 
-class TextFileView(FormattedDialog):
+class TextFileView(IOTABaseDialog):
     def __init__(
         self,
         parent,
@@ -621,7 +621,7 @@ class TextFileView(FormattedDialog):
 
         dlg_style = wx.CAPTION | wx.CLOSE_BOX | wx.RESIZE_BORDER | wx.STAY_ON_TOP
 
-        FormattedDialog.__init__(
+        IOTABaseDialog.__init__(
             self,
             parent,
             style=dlg_style,
@@ -640,16 +640,16 @@ class TextFileView(FormattedDialog):
         self.txt_sizer.Add(self.txt)
 
         self.txt_panel.SetupScrolling()
-        self.main_sizer.Add(self.txt_panel, 1, flag=wx.EXPAND | wx.ALL, border=10)
+        self.envelope.Add(self.txt_panel, 1, flag=wx.EXPAND | wx.ALL, border=10)
 
 
-class RecoveryDialog(FormattedDialog):
+class RecoveryDialog(IOTABaseDialog):
     def __init__(
         self, parent, label_style="bold", content_style="normal", *args, **kwargs
     ):
 
         dlg_style = wx.CAPTION | wx.CLOSE_BOX | wx.RESIZE_BORDER | wx.STAY_ON_TOP
-        FormattedDialog.__init__(
+        IOTABaseDialog.__init__(
             self,
             parent,
             style=dlg_style,
@@ -678,7 +678,7 @@ class RecoveryDialog(FormattedDialog):
         bmps.Add(unknown_bmp)
         self.pathlist.AssignImageList(bmps, which=1)
 
-        self.main_sizer.Add(self.pathlist, 1, flag=wx.EXPAND | wx.ALL, border=10)
+        self.envelope.Add(self.pathlist, 1, flag=wx.EXPAND | wx.ALL, border=10)
 
         # Dialog control
         self.dlg_ctr = ct.DialogButtonsCtrl(
@@ -687,11 +687,15 @@ class RecoveryDialog(FormattedDialog):
             choices=["everything", "settings only"],
             choice_label="Recover: ",
         )
-        self.main_sizer.Add(
+        self.envelope.Add(
             self.dlg_ctr, flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL, border=10
         )
 
         self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+        self.Bind(wx.EVT_BUTTON, self.onCancel, self.dlg_ctr.btn_cancel)
+        self.Bind(wx.EVT_LIST_ITEM_ACTIVATED, self.onItemActivated, id=-1)
+
+        self.place_and_size(set_by="parent", set_size="dialog")
 
     def insert_paths(self, pathlist):
         for i in range(len(pathlist)):
@@ -705,11 +709,15 @@ class RecoveryDialog(FormattedDialog):
                 status = "Unknown"
 
             stats_folder = os.path.join(pathlist[i], "stats")
-            stat_files = [
-                os.path.join(stats_folder, f)
-                for f in os.listdir(stats_folder)
-                if f.endswith("stat")
-            ]
+            try:
+                stat_files = [
+                    os.path.join(stats_folder, f)
+                    for f in os.listdir(stats_folder)
+                    if f.endswith("stat")
+                ]
+            except OSError:
+                stat_files = []
+
             if stat_files != []:
                 assert len(stat_files) == 1
                 stat_file = stat_files[0]
@@ -730,7 +738,15 @@ class RecoveryDialog(FormattedDialog):
             self.pathlist.SetColumnWidth(1, width=-1)
             self.pathlist.SetColumnWidth(2, width=-1)
 
+    def set_selection(self, idx=0):
+        self.selected = [
+            self.pathlist.GetItemText(idx, col=1),
+            self.pathlist.GetItemText(idx, col=2),
+        ]
+        self.recovery_mode = self.dlg_ctr.choice.GetSelection()
+
     def onOK(self, e):
+        selected = False
         for i in range(self.pathlist.GetItemCount()):
             if self.pathlist.IsSelected(i):
 
@@ -739,4 +755,23 @@ class RecoveryDialog(FormattedDialog):
                     self.pathlist.GetItemText(i, col=2),
                 ]
                 self.recovery_mode = self.dlg_ctr.choice.GetSelection()
+                selected = True
+
+        if selected:
+            self.EndModal(wx.ID_OK)
+        else:
+            self.EndModal(wx.ID_CANCEL)
+
         e.Skip()
+
+    def onCancel(self, e):
+        self.EndModal(wx.ID_CANCEL)
+
+    def onItemActivated(self, e):
+        idx = e.GetIndex()
+        self.set_selection(idx=idx)
+        self.EndModal(wx.ID_OK)
+        e.Skip()
+
+
+# --- end

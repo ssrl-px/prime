@@ -307,7 +307,7 @@ def select_best_by_cc_mproc(shot_no, cryst_id, iparams):
                         try:
                             miller_set = symmetry(
                                 unit_cell=observations_Eoc_corrected.unit_cell().parameters(),
-                                space_group_symbol=iparams.target_space_group,
+                                space_group_symbol=str(iparams.target_space_group),
                             ).build_miller_set(
                                 anomalous_flag=iparams.target_anomalous_flag,
                                 d_min=d_min,
@@ -320,7 +320,7 @@ def select_best_by_cc_mproc(shot_no, cryst_id, iparams):
 
                             miller_set = symmetry(
                                 unit_cell=observations_original.unit_cell().parameters(),
-                                space_group_symbol=iparams.target_space_group,
+                                space_group_symbol=str(iparams.target_space_group),
                             ).build_miller_set(
                                 anomalous_flag=iparams.target_anomalous_flag,
                                 d_min=d_min,
