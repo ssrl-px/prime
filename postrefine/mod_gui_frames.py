@@ -308,7 +308,6 @@ class PRIMEWindow(IOTABaseFrame):
 
         # Instantiate input window
         input_scope = self.prime_index.get_scopes(include=self.main_window_scopes)
-
         self.input_window = InputWindow(
             self,
             size=(600, -1),
@@ -448,6 +447,7 @@ class PRIMEWindow(IOTABaseFrame):
         self.out_dir = (
             os.path.dirname(self.pparams.run_no) if self.pparams.run_no else os.curdir
         )
+        self.update_PRIME_index()
 
     def update_PRIME_index(self, phil=None, update_run_no=True):
         # update from existing PHIL
@@ -458,8 +458,6 @@ class PRIMEWindow(IOTABaseFrame):
                 except Exception as e:
                     raise Sorry("PRIME GUI ERROR: Cannot read PHIL object! ", e)
             self.prime_index.update_phil(phil_string=phil)
-
-        self.prime_index.working_phil.show()
         self.pparams = self.prime_index.get_python_object(make_copy=True)
 
         # update n_processors
