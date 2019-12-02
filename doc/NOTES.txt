@@ -1,0 +1,8 @@
+New 'doc' folder
+
+1. Created a folder 'doc' in the PRIME repository; this folder will house commit notes (when appropriate) as well as other documentation and documentation-related files
+2. Added NOTES.txt file
+3. Uploaded images of PRIME in action
+
+12.02.2019
+# -- end
