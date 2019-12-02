@@ -10,6 +10,7 @@ These features enable the assembly of complete datasets from relatively small se
 
 PRIME can be run as a GUI or from the command-line; scripts can be used for both, interchangeably. The command-line mode is useful if the program is run remotely on servers that do not, for some reason, support graphics.
 
+![PRIME main screen](doc/prime_main_screen_12022019.png) ![PRIME run screen](doc/prime_run_screen_12022019.png)
 
 # Reference
 
